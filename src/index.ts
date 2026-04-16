@@ -12,8 +12,15 @@ const PORT = Number(process.env.PORT) || 3000;
 
 // ─── Express app ───
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Parse JSON/form bodies for all routes EXCEPT /mcp (MCP transport reads raw body)
+app.use((req, res, next) => {
+  if (req.path === "/mcp") return next();
+  express.json()(req, res, next);
+});
+app.use((req, res, next) => {
+  if (req.path === "/mcp") return next();
+  express.urlencoded({ extended: true })(req, res, next);
+});
 
 // ─── OAuth routes (unauthenticated) ───
 app.use(oauthRouter);
