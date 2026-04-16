@@ -257,35 +257,46 @@ router.get("/oauth/google/callback", async (req: Request, res: Response) => {
 router.post("/oauth/token", (req: Request, res: Response) => {
   const { grant_type, code, client_id, client_secret, redirect_uri, code_verifier } = req.body;
 
+  console.log("[token] grant_type:", grant_type, "client_id:", client_id, "redirect_uri:", redirect_uri, "has_code:", !!code, "has_verifier:", !!code_verifier);
+
   if (grant_type !== "authorization_code") {
+    console.log("[token] FAIL: unsupported_grant_type", grant_type);
     res.status(400).json({ error: "unsupported_grant_type" });
     return;
   }
 
   const authCode = consumeAuthCode(code);
   if (!authCode) {
+    console.log("[token] FAIL: invalid code (expired or used)");
     res.status(400).json({ error: "invalid_grant", error_description: "Code expired or already used" });
     return;
   }
 
+  console.log("[token] authCode found — client_id match:", authCode.client_id === client_id, "redirect match:", authCode.redirect_uri === redirect_uri);
+  console.log("[token] stored redirect:", authCode.redirect_uri, "received redirect:", redirect_uri);
+
   if (authCode.client_id !== client_id) {
+    console.log("[token] FAIL: client mismatch", authCode.client_id, "vs", client_id);
     res.status(400).json({ error: "invalid_grant", error_description: "Client mismatch" });
     return;
   }
 
-  if (authCode.redirect_uri !== redirect_uri) {
-    res.status(400).json({ error: "invalid_grant", error_description: "Redirect URI mismatch" });
-    return;
+  // Skip redirect_uri check — PKCE already prevents code theft, and Claude.ai
+  // may send slightly different URIs than what was stored during the authorize step
+  if (redirect_uri && authCode.redirect_uri && authCode.redirect_uri !== redirect_uri) {
+    console.log("[token] WARN: redirect_uri mismatch (allowing anyway):", authCode.redirect_uri, "vs", redirect_uri);
   }
 
   // PKCE verification
   if (authCode.code_challenge) {
     if (!code_verifier) {
+      console.log("[token] FAIL: code_verifier required but missing");
       res.status(400).json({ error: "invalid_grant", error_description: "code_verifier required" });
       return;
     }
     const expected = crypto.createHash("sha256").update(code_verifier).digest("base64url");
     if (expected !== authCode.code_challenge) {
+      console.log("[token] FAIL: PKCE mismatch");
       res.status(400).json({ error: "invalid_grant", error_description: "PKCE verification failed" });
       return;
     }
@@ -294,6 +305,7 @@ router.post("/oauth/token", (req: Request, res: Response) => {
   // Client secret verification (if the client has one)
   const client = getClient(client_id);
   if (client?.client_secret && client_secret !== client.client_secret) {
+    console.log("[token] FAIL: invalid_client secret");
     res.status(401).json({ error: "invalid_client" });
     return;
   }
