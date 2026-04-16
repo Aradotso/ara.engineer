@@ -26,51 +26,69 @@ const MCP_PATHS = new Set(["/", "/mcp"]);
 // will waste time exploring the filesystem otherwise.
 const ARA_INSTRUCTIONS = `# Ara Connectors
 
-You have direct access to Ara's internal tools via MCP. DO NOT grep the filesystem, clone repos, or search the internet for how to call these APIs — the tools below ARE the integration, and all API keys are already configured on the server. Just call them.
+You have direct access to Ara's internal tools via MCP. For Railway and
+the other services below, just call these tools — don't shell out, don't
+curl APIs, don't ask the user for keys.
 
-## What's available
+## 🔑 ALL secrets & API keys for Ara live in Railway variables
 
-- **Railway** (40+ tools, prefix \`railway_*\`) — full infra control: projects, services, deployments, variables, domains, volumes, logs, metrics. All keys (including the Railway API token itself) live in Railway env vars — use \`railway_get_variables\` to read them.
-- **Instacart** (\`search_products\`, \`search_stores\`, \`create_cart\`, \`check_order_status\`) — grocery search and ordering.
-- **Higgsfield** (\`generate_video\`, \`check_video_status\`, \`edit_video\`) — AI video generation.
-- **Resend** (\`send_email\`, \`list_emails\`, \`get_email\`) — transactional email. Default \`from\` should be \`hello@ara.so\` unless user specifies otherwise.
-- **Blaxel** (\`blaxel_*\`) — agent/sandbox deployment platform.
+API keys, DB URLs, OAuth secrets, third-party tokens (Stripe, OpenAI,
+Anthropic, Supabase, GitHub, Slack, Resend, Google, etc.) — all stored
+as Railway env vars on one of our services.
+
+**Start with \`ara-api\` — it has almost everything.**
+
+Hardcoded IDs (skip the discovery roundtrips):
+- Project \`Ara Backend\`: \`5b03413d-9ace-4617-beb5-18b26ce5f339\`
+- Environment \`prd\`: \`f3d22dae-9e86-4a38-a26e-0d27efa12749\`
+- Service \`ara-api\`: \`304984ab-6cc0-42cf-80e4-9cc9b6529b21\`
+
+Typical lookup: call \`railway_get_variables\` with the three IDs above.
+If the key isn't there, check \`ara-connectors\` or \`locomotive\` via
+\`railway_list_projects\`.
+
+Do NOT: ask the user to paste credentials, read \`.env\`/\`.env.local\`
+hoping they exist, generate fake values, or search the filesystem. If a
+value isn't in any Railway service, THEN ask the user.
+
+## Tools available
+
+- **Railway** (40+ \`railway_*\` tools) — projects, services, deployments,
+  variables, domains, volumes, logs, metrics. Replaces the Railway CLI
+  entirely (the CLI needs interactive auth that cloud agents can't do).
+- **Resend** (\`send_email\`, \`list_emails\`, \`get_email\`) — default from
+  \`hello@ara.so\` unless user specifies.
+- **Instacart** (\`search_products\`, \`search_stores\`, \`create_cart\`, \`check_order_status\`)
+- **Higgsfield** (\`generate_video\`, \`check_video_status\`, \`edit_video\`)
+- **Blaxel** (\`blaxel_*\`) — agent deployment.
 - **Engain** (\`engain_*\`) — leads / outbound.
 - **Linq** (\`linq_*\`) — messaging.
-- **Postiz** (\`postiz_*\`) — social media scheduling.
+- **Postiz** (\`postiz_*\`) — social scheduling.
 
-Call \`tools/list\` for exact names and schemas. Arguments match each provider's native API (camelCase IDs, etc.).
+Call \`tools/list\` for full schemas.
 
-## Known Railway IDs (production)
+## This connector's own IDs (if you need to manage it)
 
-The Ara Connectors MCP server itself runs on Railway. If a user asks about "this connector" or "the ara-connectors service":
-- **Project**: \`ara-connectors\` → \`b67dca16-5fea-41b9-ab0e-a7234237adc3\`
-- **Environment**: \`production\` → \`f4e22ed4-dde1-4aec-b1b1-375cc715ec38\`
-- **Service**: \`ara-connectors\` → \`fcabbab7-ec75-4052-bbcd-b5d1dd974ab8\`
+- Project \`ara-connectors\`: \`b67dca16-5fea-41b9-ab0e-a7234237adc3\`
+- Environment \`production\`: \`f4e22ed4-dde1-4aec-b1b1-375cc715ec38\`
+- Service \`ara-connectors\`: \`fcabbab7-ec75-4052-bbcd-b5d1dd974ab8\`
 
-For other projects, call \`railway_list_projects\` first to discover IDs, then drill down with \`railway_get_project\` which returns nested environments + services.
+## Working inside a repo vs. standalone
 
-## Secret storage
+If you're in a repo (e.g. an Aradotso/Ara cloud agent), do your normal
+SWE work — just use these tools instead of the \`railway\` CLI, instead
+of writing code to hit these APIs, and instead of asking for keys.
 
-ALL secrets (API keys, tokens, DB URLs) for Ara services are stored as Railway environment variables. If you need a secret (e.g. to pass to another tool that doesn't have it), fetch it with \`railway_get_variables\` against the right project/env/service. Never prompt the user to paste credentials we likely already have.
+If you're standalone (Claude Desktop, Cowork, no repo), the tools above
+are likely why the user invoked you.
 
-## Workflows agents should prefer
+Either way: call tools directly without asking permission for reads;
+confirm before destructive writes (deletes, prod redeploys, sending
+real emails). If a tool errors with "API key not configured", tell the
+user which env var is missing — don't invent credentials.
 
-**"What env vars does X have?"** → \`railway_list_projects\` → find the project → \`railway_get_variables\` with its IDs.
-
-**"Who am I on Railway?"** → \`railway_whoami\`. (Note: this requires a user-scoped token; account/team tokens will 401 here but still work for everything else.)
-
-**"Redeploy the service"** → \`railway_redeploy\` with \`serviceId\` + \`environmentId\`.
-
-**"Show me logs"** → get the latest deployment via \`railway_list_deployments\`, then \`railway_get_deploy_logs\` with that deployment ID. Use \`railway_get_build_logs\` if the build itself is failing.
-
-**"Set a variable"** → \`railway_set_variable\` (single) or \`railway_set_variables_bulk\` (many). Setting a var automatically triggers a redeploy unless \`skipDeploys\` is true.
-
-## Style
-
-- Be direct. Call tools without asking permission for reads; confirm before destructive writes (deletes, force redeploys on prod, sending emails to real customers).
-- If a tool errors with "API key not configured," tell the user which env var is missing — don't invent credentials.
-- This connector auto-updates: new tools Sven or Adi push to \`Aradotso/ara-connectors\` on GitHub appear on the next session. If you notice a capability is missing, suggest adding it to the repo.
+Auto-updates: new tools pushed to \`Aradotso/ara-connectors\` on GitHub
+appear on the next session.
 `;
 
 // ─── Express app ───
