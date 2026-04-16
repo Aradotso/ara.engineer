@@ -106,7 +106,7 @@ router.get("/oauth/authorize", (req: Request, res: Response) => {
     <p class="subtitle">Claude Desktop wants to connect to Ara Connectors</p>
     <div class="scope">
       <strong>${client.client_name ?? "Claude Desktop"}</strong> is requesting access to:
-      <br>DoorDash ordering, Higgsfield video generation, and more.
+      <br>Instacart grocery ordering, Higgsfield video generation, and more.
     </div>
     <form method="POST" action="/oauth/authorize">
       <input type="hidden" name="client_id" value="${client_id}">
