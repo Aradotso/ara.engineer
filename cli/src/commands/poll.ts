@@ -276,7 +276,7 @@ State file:         ~/.ae-poll-state.json
     while (true) {
       try { await pollOnce(apiKey); }
       catch (e) { console.error("[poll] error:", (e as Error).message); }
-      await Bun.sleep(60_000);
+      await Bun.sleep(5_000);
     }
   }
 
