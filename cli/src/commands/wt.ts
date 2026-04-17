@@ -182,10 +182,52 @@ export async function wtCommand(argv: string[]): Promise<number> {
   }
 
   const NAME = args.name;
-  const NGROK_PREFIX = process.env.WT_NGROK_PREFIX || "ae";
-
   const REPO = await resolveRepoRoot();
   const WT = resolve(REPO, ".worktrees", NAME);
+  const isAraMonorepo = existsSync(resolve(REPO, "app.ara.so"));
+
+  // Sync local main with origin so every new worktree starts from the latest commit.
+  console.log("[wt] syncing main with origin...");
+  const fetchResult = await runCapture(["git", "fetch", "origin", "main:main"], { cwd: REPO });
+  if (fetchResult.code !== 0) {
+    console.warn(`[wt] warning: could not sync main (${fetchResult.stderr.trim()}); proceeding with local HEAD`);
+  }
+
+  await mustCapture(["git", "worktree", "add", WT, "-b", `wt/${NAME}`, "main"], { cwd: REPO });
+
+  if (!isAraMonorepo) {
+    // Simple worktree for non-Ara repos — no services, ports, or Supabase.
+    const skillsSrc = resolve(import.meta.dir, "../../skills");
+    const skillsDst = resolve(WT, ".claude/skills");
+    if (existsSync(skillsSrc)) {
+      try {
+        mkdirSync(resolve(WT, ".claude"), { recursive: true });
+        if (existsSync(skillsDst)) unlinkSync(skillsDst);
+        symlinkSync(skillsSrc, skillsDst);
+      } catch {}
+    }
+
+    console.log(`worktree:  ${WT}`);
+    console.log(`branch:    wt/${NAME}`);
+
+    if (!args.noClaude && cmuxAvailable()) {
+      const wsRaw = await mustCapture(["cmux", "new-workspace", "--name", NAME]);
+      const wsMatch = wsRaw.match(/workspace:\d+/);
+      if (wsMatch) {
+        const WS = wsMatch[0];
+        const panes = await cmuxJson(["list-panes", "--workspace", WS]);
+        const leftSurface = panes.panes[0].surface_refs?.[0];
+        if (leftSurface) {
+          await cmuxCall(["send", "--workspace", WS, "--surface", leftSurface, `cd '${WT}' && claude --dangerously-skip-permissions\n`]);
+        }
+      }
+    }
+
+    void statSync; void basename; void $;
+    return 0;
+  }
+
+  const NGROK_PREFIX = process.env.WT_NGROK_PREFIX || "ae";
   const COUNTER = resolve(REPO, ".worktrees", ".agent-counter");
 
   // atomic-ish counter read+bump (single-user machine — good enough)
@@ -228,8 +270,6 @@ export async function wtCommand(argv: string[]): Promise<number> {
   } catch {
     // fine — user creation is best-effort; password is stable so reuse works.
   }
-
-  await mustCapture(["git", "worktree", "add", WT, "-b", `wt/${NAME}`, "HEAD"], { cwd: REPO });
 
   // Register the new worktree path in ~/.railway/config.json so `railway run`
   // works without needing `railway link`. We clone any existing Ara-backend/api

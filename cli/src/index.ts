@@ -10,7 +10,13 @@ import { updateCommand, maybeKickBackgroundCheck, maybeAutoUpdate, updateBanner 
 import { listSkills } from "./skills.ts";
 import { SHIMS, shimPath } from "./shims.ts";
 
-const VERSION = "0.2.2";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { realpathSync } from "node:fs";
+
+const _self = realpathSync(import.meta.url.replace(/^file:\/\//, ""));
+const _pkg = JSON.parse(readFileSync(resolve(dirname(_self), "../package.json"), "utf8"));
+const VERSION: string = _pkg.version ?? "?";
 
 type NativeCommand = {
   name: string;
