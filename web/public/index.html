@@ -3,213 +3,164 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ae — Ara engineer CLI</title>
-    <meta name="description" content="The Ara engineer CLI. Worktrees, dev envs, and agent-friendly skills, one command away." />
-    <meta property="og:title" content="ae — Ara engineer CLI" />
-    <meta property="og:description" content="Worktrees, dev envs, and agent-friendly skills, one command away." />
+    <title>ae — Ara Engineer</title>
+    <meta name="description" content="The ae CLI — worktrees, dev envs, and agent-friendly skills for Ara." />
+    <meta property="og:title" content="ae — Ara Engineer" />
+    <meta property="og:description" content="The ae CLI — worktrees, dev envs, and agent-friendly skills for Ara." />
+    <meta property="og:image" content="https://ara.engineer/img2.png" />
     <meta property="og:url" content="https://ara.engineer" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14' font-family='monospace'%3Eæ%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" href="/ara_logo.svg" />
+    <link rel="preconnect" href="https://rsms.me/" crossorigin />
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
     <style>
       :root {
-        --fg: #111;
-        --fg-dim: #666;
-        --bg: #fafaf9;
-        --card: #fff;
-        --line: #e7e5e4;
-        --accent: #0a0a0a;
-        --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-        --sans: ui-sans-serif, -apple-system, "Segoe UI", Inter, sans-serif;
+        --bg: #0a0a0a;
+        --fg: #ededed;
+        --muted: #7a7a7a;
+        --rule: #1c1c1c;
+        --accent: #d96f5a;
+        --sans: "Inter", "Inter var", system-ui, -apple-system, "Segoe UI", sans-serif;
+        --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
       }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --fg: #f5f5f4;
-          --fg-dim: #a8a29e;
-          --bg: #0a0a0a;
-          --card: #1c1917;
-          --line: #292524;
-          --accent: #fafafa;
-        }
+      @supports (font-variation-settings: normal) {
+        :root { --sans: "Inter var", "Inter", system-ui, -apple-system, sans-serif; }
       }
       * { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; }
       body {
-        font-family: var(--sans);
-        color: var(--fg);
         background: var(--bg);
-        font-size: 16px;
+        color: var(--fg);
+        font-family: var(--sans);
+        font-size: 14px;
         line-height: 1.55;
+        font-feature-settings: "cv11", "ss01", "ss03";
         -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
       main {
-        max-width: 720px;
+        max-width: 520px;
         margin: 0 auto;
-        padding: 80px 24px 120px;
+        padding: 72px 28px 96px;
       }
-      header { margin-bottom: 56px; }
-      .logo {
-        font-family: var(--mono);
-        font-weight: 600;
-        font-size: 14px;
-        letter-spacing: 0.02em;
-        color: var(--fg-dim);
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 40px;
       }
-      h1 {
-        font-size: 40px;
-        line-height: 1.15;
-        letter-spacing: -0.02em;
-        margin: 12px 0 12px;
-        font-weight: 600;
-      }
-      h1 .ae { font-family: var(--mono); font-weight: 600; }
-      .tagline {
-        color: var(--fg-dim);
-        font-size: 18px;
-        margin: 0;
-        max-width: 560px;
-      }
-      section { margin: 40px 0; }
-      section h2 {
+      .brand img { height: 20px; width: auto; display: block; filter: invert(93%); }
+      .brand span {
         font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--fg-dim);
-        margin: 0 0 14px;
-        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: var(--muted);
       }
+      p { margin: 0 0 16px; color: var(--fg); }
+      .intro { font-size: 15px; letter-spacing: -0.005em; }
+      code {
+        font-family: var(--mono);
+        font-size: 0.92em;
+        color: var(--fg);
+      }
+      .muted { color: var(--muted); font-size: 13px; }
       .install {
         position: relative;
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 18px 20px;
+        display: block;
         font-family: var(--mono);
-        font-size: 14.5px;
+        font-size: 13px;
+        color: var(--fg);
+        padding: 14px 16px 14px 18px;
+        margin: 8px 0 20px;
+        border: 1px solid var(--rule);
+        border-left: 2px solid var(--accent);
+        border-radius: 3px;
+        background: #0f0f0f;
+        white-space: nowrap;
         overflow-x: auto;
       }
       .install::before {
-        content: "$";
-        color: var(--fg-dim);
-        margin-right: 10px;
+        content: "$ ";
+        color: var(--muted);
         user-select: none;
       }
-      .install code { color: var(--fg); }
       .copy {
         position: absolute;
-        top: 10px;
-        right: 10px;
-        font-family: var(--mono);
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-family: var(--sans);
         font-size: 11px;
-        color: var(--fg-dim);
+        color: var(--muted);
         background: transparent;
-        border: 1px solid var(--line);
-        border-radius: 4px;
-        padding: 4px 8px;
+        border: 1px solid var(--rule);
+        border-radius: 3px;
         cursor: pointer;
+        padding: 3px 7px;
       }
-      .copy:hover { color: var(--fg); border-color: var(--fg-dim); }
-      .copy.ok { color: #16a34a; }
-      table {
+      .copy:hover { color: var(--fg); border-color: #333; }
+      .copy.ok { color: var(--accent); border-color: var(--accent); }
+      hr {
+        border: none;
+        border-top: 1px solid var(--rule);
+        margin: 40px 0 32px;
+      }
+      figure { margin: 0 0 28px; }
+      figure img {
+        display: block;
         width: 100%;
-        border-collapse: collapse;
-        font-family: var(--mono);
-        font-size: 14px;
+        height: auto;
+        border-radius: 3px;
+        opacity: 0.92;
       }
-      td { padding: 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-      td:first-child { width: 28%; color: var(--fg); font-weight: 500; white-space: nowrap; padding-right: 16px; }
-      td:last-child { color: var(--fg-dim); }
-      .flow {
-        font-family: var(--mono);
-        font-size: 14px;
-        color: var(--fg-dim);
-        white-space: pre;
-        overflow-x: auto;
-      }
-      .flow b { color: var(--fg); font-weight: 600; }
       footer {
-        margin-top: 80px;
-        padding-top: 24px;
-        border-top: 1px solid var(--line);
-        font-size: 13px;
-        color: var(--fg-dim);
-        display: flex;
-        gap: 20px;
-        flex-wrap: wrap;
+        margin-top: 32px;
+        font-size: 12px;
+        color: var(--muted);
+        letter-spacing: 0.01em;
       }
-      footer a { color: var(--fg-dim); text-decoration: none; border-bottom: 1px solid transparent; }
-      footer a:hover { color: var(--fg); border-bottom-color: var(--fg-dim); }
-      kbd {
-        font-family: var(--mono);
-        font-size: 13px;
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-bottom-width: 2px;
-        border-radius: 4px;
-        padding: 1px 6px;
+      footer a {
+        color: var(--muted);
+        text-decoration: none;
       }
-      p { margin: 12px 0; }
+      footer a:hover { color: var(--fg); }
+      footer .sep { margin: 0 8px; color: var(--rule); }
+
       @media (max-width: 560px) {
-        main { padding: 48px 20px 80px; }
-        h1 { font-size: 32px; }
-        td:first-child { width: 38%; }
+        main { padding: 48px 22px 72px; }
       }
     </style>
   </head>
   <body>
     <main>
-      <header>
-        <div class="logo">ara.engineer</div>
-        <h1><span class="ae">ae</span> — the Ara engineer CLI</h1>
-        <p class="tagline">Worktrees, dev envs, and agent-friendly skills — one command away.</p>
-      </header>
+      <div class="brand">
+        <img src="/ara_logo.svg" alt="" />
+        <span>Ara Engineer</span>
+      </div>
 
-      <section>
-        <h2>Install</h2>
-        <div class="install">
-          <code id="install-cmd">curl -fsSL https://ara.engineer/install | sh</code>
-          <button class="copy" id="copy-btn" aria-label="Copy install command">copy</button>
-        </div>
-        <p style="font-size: 14px; color: var(--fg-dim); margin-top: 10px;">
-          Requires <kbd>bun</kbd> and <kbd>git</kbd>. Installs to <code style="font-family: var(--mono); font-size: 13px;">~/.bun/bin/ae</code>.
-        </p>
-      </section>
+      <p class="intro">
+        <code>ae</code> is the engineering console for Ara — worktrees, dev envs, and agent-friendly skills, one command away.
+      </p>
 
-      <section>
-        <h2>What it does</h2>
-        <table>
-          <tbody>
-            <tr><td>ae</td><td>help + full skill list</td></tr>
-            <tr><td>ae list</td><td>all skills (add <code>--json</code> for agents)</td></tr>
-            <tr><td>ae &lt;skill&gt;</td><td>print a skill's SKILL.md so an agent can follow it</td></tr>
-            <tr><td>ae wt [name]</td><td>spawn an Ara worktree, dev env, cmux layout, and Claude</td></tr>
-          </tbody>
-        </table>
-      </section>
+      <p>Install:</p>
 
-      <section>
-        <h2>Flow</h2>
-<div class="flow"><b>ae wt</b> my-feature     ← isolated worktree + dev env
-<b>ae feat</b>                ← start a branch (prints instructions)
-  ... code ...
-<b>ae test</b>                ← auto-detect what changed, run tests
-<b>ae push</b>                ← commit, PR, review, merge, deploy</div>
-      </section>
+      <div class="install">
+        <span id="install-cmd">curl -fsSL https://ara.engineer/install | sh</span>
+        <button class="copy" id="copy-btn" aria-label="Copy">copy</button>
+      </div>
 
-      <section>
-        <h2>Agent usage</h2>
-        <p style="font-size: 14.5px;">
-          Every skill is discoverable as JSON, so agents running inside any environment can find
-          capabilities at runtime:
-        </p>
-<div class="install">
-<code>ae list --json              <span style="color:var(--fg-dim)"># catalog</span>
-ae &lt;skill&gt; --json           <span style="color:var(--fg-dim)"># metadata + full SKILL.md body</span></code>
-</div>
-      </section>
+      <p class="muted">Requires <code>bun</code> and <code>git</code>. Installs <code>ae</code> to <code>~/.bun/bin</code>.</p>
+
+      <hr />
+
+      <figure>
+        <img src="/img2.png" alt="" />
+      </figure>
 
       <footer>
-        <a href="/install" target="_blank">install script</a>
-        <a href="https://github.com/Aradotso/ara.engineer" target="_blank">github</a>
-        <a href="https://ara.so" target="_blank">ara.so</a>
+        <a href="/install">install script</a>
+        <span class="sep">·</span>
+        <a href="https://github.com/Aradotso/ara.engineer">github</a>
+        <span class="sep">·</span>
+        <a href="https://ara.so">ara.so</a>
       </footer>
     </main>
 
@@ -221,9 +172,13 @@ ae &lt;skill&gt; --json           <span style="color:var(--fg-dim)"># metadata +
           await navigator.clipboard.writeText(cmd.textContent);
           btn.textContent = "copied";
           btn.classList.add("ok");
-          setTimeout(() => { btn.textContent = "copy"; btn.classList.remove("ok"); }, 1600);
+          setTimeout(() => { btn.textContent = "copy"; btn.classList.remove("ok"); }, 1400);
         } catch {
-          btn.textContent = "select + ⌘C";
+          const r = document.createRange();
+          r.selectNode(cmd);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(r);
         }
       });
     </script>
