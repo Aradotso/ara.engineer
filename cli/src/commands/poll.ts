@@ -196,11 +196,15 @@ async function installInCmux(apiKey: string): Promise<void> {
   if (!wsMatch) throw new Error(`cmux new-workspace failed: ${wsRaw}`);
   const WS = wsMatch[0];
 
-  // Get the default pane/surface
+  // Get the default pane, then explicitly create a persistent terminal surface
   const panesRaw = (await runCapture(["cmux", "--json", "list-panes", "--workspace", WS])).out;
   const panes = JSON.parse(panesRaw);
-  const surface = panes.panes[0]?.surface_refs?.[0] ?? panes.panes[0]?.ref;
-  if (!surface) throw new Error("Could not find surface in new workspace");
+  const paneRef = panes.panes[0]?.ref;
+  if (!paneRef) throw new Error("Could not find pane in new workspace");
+
+  const surfRaw = (await runCapture(["cmux", "--json", "new-surface", "--type", "terminal", "--pane", paneRef, "--workspace", WS])).out;
+  const surface = JSON.parse(surfRaw).surface_ref;
+  if (!surface) throw new Error("Could not create terminal surface");
 
   // Send the poll loop command
   const cmd = `LINEAR_API_KEY='${apiKey}' ${ae} poll --loop\n`;
