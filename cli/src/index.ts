@@ -2,7 +2,7 @@
 import { wtCommand } from "./commands/wt.ts";
 import { listCommand } from "./commands/list.ts";
 import { showCommand } from "./commands/show.ts";
-import { updateCommand, maybeKickBackgroundCheck, updateBanner } from "./commands/update.ts";
+import { updateCommand, maybeKickBackgroundCheck, maybeAutoUpdate, updateBanner } from "./commands/update.ts";
 import { listSkills } from "./skills.ts";
 import { SHIMS, shimPath } from "./shims.ts";
 
@@ -107,10 +107,17 @@ function printHelp() {
 }
 
 async function main() {
-  // Fire the daily background update check (non-blocking, silent, ≤1/day).
+  const argv = Bun.argv.slice(2);
+
+  // Auto-update on every invocation if the cached behind-count > 0.
+  // Silent if already up to date. Skips for dev checkouts with local changes.
+  // Re-execs the user's command on the fresh code (never returns in that case).
+  await maybeAutoUpdate(argv);
+
+  // Background fetch to refresh the cached behind-count (≤1 per 10 min).
   maybeKickBackgroundCheck();
 
-  const [sub, ...rest] = Bun.argv.slice(2);
+  const [sub, ...rest] = argv;
 
   if (!sub || sub === "-h" || sub === "--help" || sub === "help") {
     if (sub === "help" && rest[0]) {

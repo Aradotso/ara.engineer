@@ -150,18 +150,23 @@ function writeCheckStamp(n: number) {
   } catch {}
 }
 
+// Background fetch throttle. Short enough that "push now, user picks it up
+// within ~10 minutes" works; long enough that `ae` invocations don't spam
+// GitHub.
+const BG_THROTTLE_MIN = 10;
+
 export function maybeKickBackgroundCheck() {
-  if (process.env.AE_NO_UPDATE_CHECK === "1") return;
+  if (autoUpdateDisabled()) return;
   let age = Infinity;
   try {
-    age = (Date.now() - statSync(STAMP).mtimeMs) / 3_600_000;
+    age = (Date.now() - statSync(STAMP).mtimeMs) / 60_000;
   } catch {}
-  if (age < 24) return;
+  if (age < BG_THROTTLE_MIN) return;
   try {
     mkdirSync(STATE_DIR, { recursive: true });
     writeFileSync(STAMP, new Date().toISOString());
   } catch {
-    return; // can't write state — don't spawn
+    return;
   }
   const repo = repoRoot();
   if (!existsSync(resolve(repo, ".git"))) return;
@@ -180,6 +185,86 @@ export function updateBanner(): string | null {
     }
   } catch {}
   return null;
+}
+
+// ─── Auto-update on every invocation ─────────────────────────────────────────
+// Contract: if the cached `behind` count is > 0 and the repo is clean, pull
+// + reinstall deps + relink shims, then re-exec the user's command on the
+// fresh code. Takes a few seconds when an update is ready; otherwise fast.
+//
+// Fully silent on the happy path (no update needed). Prints one status line
+// when it pulls. Skips when the checkout has local changes (dev mode). Skips
+// when the env var AE_NO_AUTO_UPDATE=1 is set, or when the env var AE_UPDATED=1
+// is already present (set during re-exec, prevents loops).
+
+export function autoUpdateDisabled(): boolean {
+  return process.env.AE_NO_AUTO_UPDATE === "1" || process.env.AE_NO_UPDATE_CHECK === "1";
+}
+
+function readBehind(): number {
+  try {
+    const n = Number(readFileSync(BEHIND, "utf8").trim());
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function maybeAutoUpdate(argv: string[]): Promise<void> {
+  if (autoUpdateDisabled()) return;
+  if (process.env.AE_UPDATED === "1") return; // already re-exec'd in this chain
+  const behind = readBehind();
+  if (behind <= 0) return;
+
+  const repo = repoRoot();
+  if (!existsSync(resolve(repo, ".git"))) return;
+  if (await hasLocalChanges(repo)) return; // dev checkout — don't touch
+
+  process.stderr.write(
+    `ae: auto-updating (${behind} commit${behind === 1 ? "" : "s"} behind)… `,
+  );
+
+  const pull = await run(["git", "pull", "--ff-only", "--quiet", "origin", "main"], { cwd: repo });
+  if (pull.code !== 0) {
+    process.stderr.write(`git pull failed, continuing with old code\n`);
+    return;
+  }
+  const install = await run(["bun", "install", "--silent"], { cwd: resolve(repo, "cli") });
+  if (install.code !== 0) {
+    process.stderr.write(`bun install failed, continuing with old code\n`);
+    return;
+  }
+
+  // Relink shims (new shim files, if any, get picked up)
+  const bin = binDir();
+  try {
+    mkdirSync(bin, { recursive: true });
+    const { symlinkSync, unlinkSync, existsSync: _exists } = await import("node:fs");
+    const link = (target: string, alias: string) => {
+      const dst = resolve(bin, alias);
+      try { if (_exists(dst)) unlinkSync(dst); } catch {}
+      symlinkSync(target, dst);
+    };
+    link(resolve(repo, "cli/bin/ae"), "ae");
+    for (const s of SHIMS) {
+      const src = resolve(repo, "cli/shims", s.name);
+      if (_exists(src)) link(src, s.name);
+    }
+  } catch {}
+
+  writeCheckStamp(0);
+  process.stderr.write(`done (now ${await currentVersion(repo)})\n`);
+
+  // Re-exec on the fresh code. Use the shim at $BIN_DIR/ae which will resolve
+  // to the just-pulled source.
+  const aeBin = resolve(bin, "ae");
+  if (!existsSync(aeBin)) return;
+  const child = Bun.spawn([aeBin, ...argv], {
+    stdio: ["inherit", "inherit", "inherit"],
+    env: { ...process.env, AE_UPDATED: "1" },
+  });
+  const code = await child.exited;
+  process.exit(code);
 }
 
 void basename;
