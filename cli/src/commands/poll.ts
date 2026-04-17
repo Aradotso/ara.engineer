@@ -12,7 +12,17 @@ const STATE_DONE = "2d48ea35-d79a-47fb-a3f1-c94fb29e2592";
 
 const STATE_FILE = resolve(homedir(), ".ae-poll-state.json");
 const PLIST_PATH = resolve(homedir(), "Library/LaunchAgents/so.ara.ae-poll.plist"); // kept for --uninstall cleanup
-const ARA_REPO = resolve(homedir(), "github/Ara");
+
+// Presume the user runs `ae poll` from their Ara checkout. Fall back to the
+// legacy hardcoded path only if cwd isn't a git repo.
+function findAraRepo(): string {
+  const cwd = process.cwd();
+  if (existsSync(resolve(cwd, ".git"))) return cwd;
+  const legacy = resolve(homedir(), "github/Ara");
+  if (existsSync(legacy)) return legacy;
+  return cwd;
+}
+const ARA_REPO = findAraRepo();
 
 // ─── state ────────────────────────────────────────────────────────────────────
 
@@ -84,11 +94,10 @@ async function updateIssueState(apiKey: string, issueId: string, stateId: string
 const GH_BIN = Bun.which("gh") ?? resolve(homedir(), ".local/bin/gh");
 
 async function getPrForBranch(branch: string): Promise<{ number: number; state: string } | null> {
-  const repoDir = existsSync(ARA_REPO) ? ARA_REPO : process.cwd();
   try {
     const r = Bun.spawnSync(
       [GH_BIN, "pr", "list", "--head", branch, "--json", "number,state", "--limit", "1"],
-      { stdout: "pipe", stderr: "pipe", cwd: repoDir },
+      { stdout: "pipe", stderr: "pipe", cwd: ARA_REPO },
     );
     if (r.exitCode !== 0) return null;
     const prs = JSON.parse(r.stdout.toString().trim()) as Array<{ number: number; state: string }>;
