@@ -185,7 +185,7 @@ function writePlist(apiKey: string): void {
   <dict>
     <key>LINEAR_API_KEY</key><string>${apiKey}</string>
     <key>HOME</key><string>${homedir()}</string>
-    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>PATH</key><string>${homedir()}/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
