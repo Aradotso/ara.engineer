@@ -209,8 +209,11 @@ function installAsBackground(apiKey: string): void {
   // Running as a direct background job keeps us in the cmux process hierarchy.
   // We use disown to detach from the shell's job table without losing cmux credentials.
   const ae = Bun.which("ae") ?? `${homedir()}/.bun/bin/ae`;
-  const cmd = `LINEAR_API_KEY='${apiKey}' '${ae}' poll --loop >> ~/.ae-poll.log 2>&1 & disown\necho "ae-poll PID: $!"`;
-  Bun.spawnSync(["bash", "-c", cmd], { stdio: ["inherit", "inherit", "inherit"] });
+  // caffeinate -si: -s prevents system sleep (AC only), -i prevents idle sleep
+  const cmd = `caffeinate -si '${ae}' poll --loop >> ~/.ae-poll.log 2>&1 & disown\necho "ae-poll PID: $!"`;
+  // (replace LINEAR_API_KEY inline so it's visible to the process)
+  const finalCmd = cmd.replace("caffeinate", `LINEAR_API_KEY='${apiKey}' caffeinate`);
+  Bun.spawnSync(["bash", "-c", finalCmd], { stdio: ["inherit", "inherit", "inherit"] });
 }
 
 // ─── command ──────────────────────────────────────────────────────────────────
