@@ -109,7 +109,6 @@ function spawnWt(title: string): void {
     stdout: openSync("/tmp/ae-wt-spawn.log", "a"),
     stderr: openSync("/tmp/ae-wt-spawn.log", "a"),
   });
-  child.unref(); // don't block the poll loop
 }
 
 // ─── core poll ────────────────────────────────────────────────────────────────
