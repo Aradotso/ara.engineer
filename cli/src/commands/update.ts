@@ -162,7 +162,10 @@ This updates the repo at $(dirname $(readlink -f $(which ae)))/../..
 async function currentVersion(repo: string): Promise<string> {
   try {
     const pkg = JSON.parse(readFileSync(resolve(repo, "cli/package.json"), "utf8"));
-    return String(pkg.version || "?");
+    const [major, minor] = (String(pkg.version || "0.2")).split(".");
+    const r = await run(["git", "rev-list", "--count", "HEAD"], { cwd: repo });
+    const patch = r.code === 0 ? r.stdout.trim() : "?";
+    return `${major}.${minor}.${patch}`;
   } catch {
     return "?";
   }
