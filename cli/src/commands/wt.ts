@@ -182,7 +182,7 @@ export async function wtCommand(argv: string[]): Promise<number> {
   }
 
   const NAME = args.name;
-  const NGROK_PREFIX = process.env.WT_NGROK_PREFIX || "adi";
+  const NGROK_PREFIX = process.env.WT_NGROK_PREFIX || "ae";
 
   const REPO = await resolveRepoRoot();
   const WT = resolve(REPO, ".worktrees", NAME);
@@ -308,6 +308,7 @@ export async function wtCommand(argv: string[]): Promise<number> {
     `VITE_DEV_USER_EMAIL='${DEV_EMAIL}'`,
     `VITE_DEV_USER_PASSWORD='${DEV_TEST_PASSWORD}'`,
     `VITE_CLOUD_API_URL='https://${API_DOMAIN}'`,
+    `CLOUD_API_TARGET='http://127.0.0.1:${API}'`,
   ].join(" ");
 
   const APP_CMD = `cd '${WT}/app.ara.so' && ${frontEnv} bun dev -- --port ${APP} --host 127.0.0.1`;
