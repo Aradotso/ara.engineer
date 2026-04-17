@@ -125,7 +125,7 @@ async function pollOnce(apiKey: string): Promise<void> {
     if (!state.tracked[issue.id]) {
       console.log(`[poll] ▶ ${issue.identifier}: ${issue.title}`);
       const branch = titleToBranch(issue.title);
-      spawnWt(issue.title);
+      try { spawnWt(issue.title); } catch (e) { console.error(`[poll] spawn failed: ${(e as Error).message}`); }
       state.tracked[issue.id] = {
         id: issue.id,
         identifier: issue.identifier,
