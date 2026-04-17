@@ -94,10 +94,14 @@ async function getPrForBranch(branch: string): Promise<{ number: number; state: 
 }
 
 function spawnWt(title: string): void {
-  // Opens a new Terminal window so ae wt runs in a real interactive session
-  // where cmux can lay out the workspace.
-  const safe = title.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/'/g, "'\\''");
-  Bun.spawnSync(["osascript", "-e", `tell application "Terminal" to do script "ae wt '${safe}'"`]);
+  // Write a .command file and `open` it — macOS opens .command files in
+  // Terminal.app automatically without requiring Automation permissions
+  // (osascript → Terminal is blocked from launchd user agents).
+  const safe = title.replace(/'/g, "'\\''");
+  const script = `#!/bin/bash\nexport PATH="${homedir()}/.bun/bin:${homedir()}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"\nae wt '${safe}'\n`;
+  const tmp = `/tmp/ae-wt-${Date.now()}.command`;
+  writeFileSync(tmp, script, { mode: 0o755 });
+  Bun.spawnSync(["open", tmp]);
 }
 
 // ─── core poll ────────────────────────────────────────────────────────────────
