@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# cc — fast Claude Code launch (alias from zshrc, shipped with ae).
+#   cc "do thing"
+exec claude --dangerously-skip-permissions "$@"

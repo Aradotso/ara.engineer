@@ -33,10 +33,21 @@ fi
 say "Installing dependencies"
 (cd "$INSTALL_DIR/cli" && bun install --silent)
 
-# ── link binary ─────────────────────────────────────────────────────────────
+# ── link binary + shortcut shims ────────────────────────────────────────────
+# `ae` itself, plus cc/cct/cs/cx/ccbg (the zsh-alias shortcuts the team uses).
 mkdir -p "$BIN_DIR"
 ln -snf "$INSTALL_DIR/cli/bin/ae" "$BIN_DIR/ae"
-say "Linked $BIN_DIR/ae"
+linked="ae"
+if [ -d "$INSTALL_DIR/cli/shims" ]; then
+  for shim in "$INSTALL_DIR/cli/shims"/*; do
+    [ -f "$shim" ] || continue
+    name=$(basename "$shim")
+    chmod +x "$shim" 2>/dev/null || true
+    ln -snf "$shim" "$BIN_DIR/$name"
+    linked="$linked, $name"
+  done
+fi
+say "Linked into $BIN_DIR: $linked"
 
 # ── warn if not on PATH ─────────────────────────────────────────────────────
 case ":$PATH:" in
@@ -52,8 +63,10 @@ esac
 # ── verify ──────────────────────────────────────────────────────────────────
 if "$BIN_DIR/ae" --version >/dev/null 2>&1; then
   printf '\n\033[1;32m✓\033[0m  ae installed: %s\n\n' "$("$BIN_DIR/ae" --version)"
-  printf '   Try it:  \033[1mae\033[0m        # help + skill list\n'
-  printf '            \033[1mae list\033[0m   # all skills\n\n'
+  printf '   Try it:  \033[1mae\033[0m             # help + skill list\n'
+  printf '            \033[1mae list\033[0m        # all skills\n'
+  printf '            \033[1mae update\033[0m      # pull latest and relink\n'
+  printf '            \033[1mcc\033[0m, \033[1mcct\033[0m, \033[1mcs\033[0m, \033[1mcx\033[0m, \033[1mccbg\033[0m  # shortcuts (also on PATH)\n\n'
 else
   die "install finished but \`ae --version\` didn't work — check $BIN_DIR/ae"
 fi

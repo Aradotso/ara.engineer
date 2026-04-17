@@ -14,8 +14,33 @@ ae                    help + full skill list
 ae list [--json]      catalog of every SKILL.md discovered
 ae <skill> [--json]   print a skill's SKILL.md (agent-friendly)
 ae wt [name]          spawn an Ara worktree + dev env + cmux + claude
+ae update             pull latest + relink shims
+ae update --check     report if an update is available, no changes
 ae --version
 ```
+
+## Shortcuts
+
+Installed alongside `ae` as bare commands on `$PATH`:
+
+| Shim | Runs |
+|------|------|
+| `cc` | `claude --dangerously-skip-permissions` |
+| `cct` | `cmux claude-teams --dangerously-skip-permissions` |
+| `cs` | `agent --yolo` |
+| `cx` | `codex --dangerously-bypass-approvals-and-sandbox` |
+| `ccbg <cmd>` | Run + tee output to `/tmp/ccbg/<name>-<time>.log` (for agents to watch) |
+
+All shims live in `cli/shims/` and are linked by `install.sh` / `ae update`.
+They also work as `ae cc`, `ae cct`, `ae cs`, `ae cx`, `ae ccbg`.
+
+## Updates
+
+A daily background check (≤1 `git fetch` per 24h) writes the commit
+count-behind to `~/.ae/behind`. On the next `ae` help invocation the banner
+nudges you: `↑ ae is N commits behind — run \`ae update\` to upgrade`.
+
+Disable with `AE_NO_UPDATE_CHECK=1`.
 
 Skill discovery tries roots in this order (first hit wins per skill id):
 

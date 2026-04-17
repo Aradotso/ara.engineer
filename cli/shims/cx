@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# cx — Codex with approvals + sandbox bypassed (alias from zshrc, shipped with ae).
+exec codex --dangerously-bypass-approvals-and-sandbox "$@"

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# ccbg — run a command, tee its output to /tmp/ccbg/<name>-<time>.log so Claude
+# can read it later with `watch /tmp/ccbg/`. Backgrounds the command.
+#
+# Ported as-is from the zshrc function.
+set -u
+logdir="/tmp/ccbg"
+mkdir -p "$logdir"
+name=$(printf '%s' "${1:-cmd}" | tr ' /:' '-')
+logfile="$logdir/${name}-$(date +%H%M%S).log"
+printf '\xF0\x9F\x93\x81 Logging to: %s\n' "$logfile"
+printf '\xF0\x9F\x94\x8D Tell Claude: watch /tmp/ccbg/\n\n'
+{
+  printf 'Command: %s\n' "$*"
+  printf 'Started: %s\n---\n' "$(date)"
+} > "$logfile"
+"$@" 2>&1 | tee -a "$logfile" &
+printf 'PID: %s\n' "$!"

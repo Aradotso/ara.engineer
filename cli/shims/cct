@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# cct — claude teams through cmux (alias from zshrc, shipped with ae).
+exec cmux claude-teams --dangerously-skip-permissions "$@"

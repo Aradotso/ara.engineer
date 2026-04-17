@@ -1,6 +1,6 @@
 {
   "name": "ae",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "description": "Ara engineer CLI — skills, worktrees, dev env. The new home of astack.",
   "type": "module",
