@@ -191,6 +191,7 @@ Columns: agent · branch · app/mkt/api ports (●=up ○=down) · PR state
   }
 
   const noGc = argv.includes("--no-gc");
+  const watch = !argv.includes("--no-watch") && !argv.includes("--once");
   const repoRoot = await resolveRepoRoot();
   const wtRoot = resolve(repoRoot, ".worktrees");
 
@@ -287,15 +288,50 @@ Columns: agent · branch · app/mkt/api ports (●=up ○=down) · PR state
 
   const merged = infos.filter((w) => w.prState === "merged");
   const toGc = [...merged, ...abandoned];
-  if (toGc.length === 0 || noGc) return 0;
-
-  if (merged.length > 0) console.log(`  ${merged.length} merged worktree(s) — cleaning up…`);
-  if (abandoned.length > 0) console.log(`  ${abandoned.length} abandoned worktree(s) (ports dead, no PR) — cleaning up…`);
-
-  for (const wt of toGc) {
-    await gcWorktree(wt, repoRoot);
+  if (!noGc && toGc.length > 0) {
+    if (merged.length > 0) console.log(`  ${merged.length} merged worktree(s) — cleaning up…`);
+    if (abandoned.length > 0) console.log(`  ${abandoned.length} abandoned worktree(s) (ports dead, no PR) — cleaning up…`);
+    for (const wt of toGc) await gcWorktree(wt, repoRoot);
+    console.log("");
   }
-  console.log("");
 
-  return 0;
+  if (!watch) return 0;
+
+  // Live mode — redraw every 5s until Ctrl-C
+  process.on("SIGINT", () => { process.stdout.write("\x1b[?25h\n"); process.exit(0); });
+  process.stdout.write("\x1b[?25l");
+  while (true) {
+    await Bun.sleep(5_000);
+    const [allWts2, busy2] = await Promise.all([gitWorktrees(repoRoot), busyPorts()]);
+    const agentWts2 = allWts2.filter((w) => w.path.startsWith(wtRoot + "/"));
+    if (agentWts2.length === 0) { process.stdout.write("\x1b[2J\x1b[H\n  No agent worktrees active.\n"); continue; }
+    const infos2: WorktreeInfo[] = await Promise.all(agentWts2.map(async (w) => {
+      const name = basename(w.path);
+      const tunnels = parseNgrokYml(resolve(w.path, ".ngrok.yml"));
+      let agentN: number | null = null;
+      const appTunnel = tunnels.find((t) => t.name.startsWith("app-"));
+      if (appTunnel) agentN = parseInt(appTunnel.name.replace("app-", ""), 10);
+      const portAlive: Record<number, boolean> = {};
+      for (const t of tunnels) portAlive[t.addr] = busy2.has(t.addr);
+      const [dirty, prInfo] = await Promise.all([isDirty(w.path), getPrInfo(w.branch, repoRoot)]);
+      let prState: WorktreeInfo["prState"] = "none";
+      if (prInfo) { const s = prInfo.state.toLowerCase(); prState = s === "merged" ? "merged" : s === "draft" ? "draft" : s === "open" ? "open" : "closed"; }
+      return { path: w.path, name, branch: w.branch, agentN, tunnels, portAlive, gitStatus: dirty ? "dirty" : "clean", prNumber: prInfo?.number ?? null, prState, prUrl: prInfo?.url ?? "" } satisfies WorktreeInfo;
+    }));
+    const lines: string[] = ["", `  \x1b[1mae status\x1b[0m  \x1b[2m(Ctrl-C to exit)\x1b[0m`, "  " + "─".repeat(80), `  \x1b[2m${"AGENT".padEnd(12)} ${"BRANCH".padEnd(30)} ${"APP".padEnd(6)} ${"MKT".padEnd(6)} ${"API".padEnd(6)} STATUS\x1b[0m`, "  " + "─".repeat(80)];
+    for (const wt of infos2) {
+      const label = wt.agentN != null ? `agent-${wt.agentN}` : wt.name.slice(0, 12);
+      const branch = wt.branch.length > 28 ? wt.branch.slice(0, 27) + "…" : wt.branch;
+      const appT = wt.tunnels.find((t) => t.name.startsWith("app-")); const mktT = wt.tunnels.find((t) => t.name.startsWith("mkt-")); const apiT = wt.tunnels.find((t) => t.name.startsWith("api-"));
+      const appS = appT ? portLabel(wt.portAlive[appT.addr]) : " "; const mktS = mktT ? portLabel(wt.portAlive[mktT.addr]) : " "; const apiS = apiT ? portLabel(wt.portAlive[apiT.addr]) : " ";
+      const statusStr = prStateLabel(wt.prState) + (wt.gitStatus === "dirty" ? " *" : ""); const prTag = wt.prNumber ? ` #${wt.prNumber}` : "";
+      lines.push(`  ${label.padEnd(12)} ${branch.padEnd(30)} ${appS.padEnd(6)} ${mktS.padEnd(6)} ${apiS.padEnd(6)} ${statusStr}${prTag}`);
+      if (appT) lines.push(`  ${" ".padEnd(12)} app  https://${appT.domain}  :${appT.addr}`);
+      if (mktT) lines.push(`  ${" ".padEnd(12)} mkt  https://${mktT.domain}  :${mktT.addr}`);
+      if (apiT) lines.push(`  ${" ".padEnd(12)} api  https://${apiT.domain}  :${apiT.addr}`);
+      if (wt.prUrl) lines.push(`  ${" ".padEnd(12)} pr   ${wt.prUrl}`);
+      lines.push("");
+    }
+    process.stdout.write("\x1b[2J\x1b[H" + lines.join("\n"));
+  }
 }
