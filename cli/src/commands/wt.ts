@@ -96,9 +96,16 @@ async function runCapture(cmd: string[], opts: { cwd?: string } = {}): Promise<{
   return { code, stdout, stderr };
 }
 
+function formatCmd(cmd: string[]): string {
+  return cmd.map((arg) => JSON.stringify(arg)).join(" ");
+}
+
 async function mustCapture(cmd: string[], opts: { cwd?: string } = {}): Promise<string> {
   const r = await runCapture(cmd, opts);
-  if (r.code !== 0) throw new Error(`${cmd.join(" ")} failed (${r.code}): ${r.stderr}`);
+  if (r.code !== 0) {
+    const details = r.stderr.trim() || r.stdout.trim() || "no output";
+    throw new Error(`${formatCmd(cmd)} failed (${r.code}): ${details}`);
+  }
   return r.stdout.trim();
 }
 
@@ -108,6 +115,25 @@ async function resolveRepoRoot(): Promise<string> {
   const r = await runCapture(["git", "rev-parse", "--git-common-dir"]);
   if (r.code === 0 && r.stdout.trim()) return resolve(r.stdout.trim(), "..");
   return resolve(homedir(), "lab/Ara");
+}
+
+async function branchExists(repoRoot: string, branchName: string): Promise<boolean> {
+  const r = await runCapture(["git", "show-ref", "--verify", "--quiet", `refs/heads/${branchName}`], { cwd: repoRoot });
+  return r.code === 0;
+}
+
+async function resolveWorktreeTarget(repoRoot: string, wtRoot: string, requestedName: string): Promise<{ name: string; branch: string; wtPath: string }> {
+  let candidate = requestedName;
+  let n = 2;
+  while (true) {
+    const branch = `wt/${candidate}`;
+    const wtPath = resolve(wtRoot, candidate);
+    if (!existsSync(wtPath) && !(await branchExists(repoRoot, branch))) {
+      return { name: candidate, branch, wtPath };
+    }
+    candidate = `${requestedName}-${n}`;
+    n += 1;
+  }
 }
 
 // ─── port allocation ─────────────────────────────────────────────────────────
@@ -194,6 +220,37 @@ async function cmuxCall(args: string[]): Promise<string> {
   return r.stdout;
 }
 
+async function cmuxNewSplit(direction: "left" | "right" | "up" | "down", workspace: string, anchorSurface: string, anchorPane?: string): Promise<any> {
+  const attempts: string[][] = [
+    ["cmux", "--json", "new-split", direction, "--workspace", workspace, "--surface", anchorSurface],
+  ];
+  if (anchorPane) attempts.push(["cmux", "--json", "new-split", direction, "--workspace", workspace, "--panel", anchorPane]);
+  // Some cmux builds route --panel through surface refs internally.
+  attempts.push(["cmux", "--json", "new-split", direction, "--workspace", workspace, "--panel", anchorSurface]);
+
+  const errors: string[] = [];
+  for (const cmd of attempts) {
+    const r = await runCapture(cmd);
+    if (r.code === 0) return JSON.parse(r.stdout);
+    errors.push(`${cmd.slice(2).join(" ")} => ${r.stderr.trim() || `exit ${r.code}`}`);
+  }
+
+  throw new Error(`cmux split failed: ${errors.join(" | ")}`);
+}
+
+function workspaceRefFromOutput(raw: string): string | null {
+  const m = raw.match(/workspace:\d+/);
+  return m ? m[0] : null;
+}
+
+async function createCmuxWorkspace(title: string): Promise<string> {
+  const wsRaw = await mustCapture(["cmux", "new-workspace"]);
+  const ws = workspaceRefFromOutput(wsRaw);
+  if (!ws) throw new Error(`cmux new-workspace failed: ${wsRaw}`);
+  if (title) await runCapture(["cmux", "rename-workspace", "--workspace", ws, title]);
+  return ws;
+}
+
 // ─── the command ─────────────────────────────────────────────────────────────
 
 export async function wtCommand(argv: string[]): Promise<number> {
@@ -205,10 +262,18 @@ export async function wtCommand(argv: string[]): Promise<number> {
 
   ensureRemoteControlAtStartup();
 
-  const NAME = args.name;
+  const REQUESTED_NAME = args.name;
   const REPO = await resolveRepoRoot();
-  const WT = resolve(REPO, ".worktrees", NAME);
+  const WT_ROOT = resolve(REPO, ".worktrees");
+  const target = await resolveWorktreeTarget(REPO, WT_ROOT, REQUESTED_NAME);
+  const NAME = target.name;
+  const BRANCH = target.branch;
+  const WT = target.wtPath;
   const isAraMonorepo = existsSync(resolve(REPO, "app.ara.so"));
+
+  if (NAME !== REQUESTED_NAME) {
+    console.log(`[wt] name "${REQUESTED_NAME}" is in use; using "${NAME}"`);
+  }
 
   // Sync origin/main without touching the checked-out branch (avoids "refusing
   // to fetch into branch checked out" error when main is the current branch).
@@ -218,7 +283,7 @@ export async function wtCommand(argv: string[]): Promise<number> {
     console.warn(`[wt] warning: could not sync main (${fetchResult.stderr.trim()}); proceeding with local HEAD`);
   }
 
-  await mustCapture(["git", "worktree", "add", WT, "-b", `wt/${NAME}`, "origin/main"], { cwd: REPO });
+  await mustCapture(["git", "worktree", "add", WT, "-b", BRANCH, "origin/main"], { cwd: REPO });
 
   if (!isAraMonorepo) {
     // Simple worktree for non-Ara repos — no services, ports, or Supabase.
@@ -233,18 +298,14 @@ export async function wtCommand(argv: string[]): Promise<number> {
     }
 
     console.log(`worktree:  ${WT}`);
-    console.log(`branch:    wt/${NAME}`);
+    console.log(`branch:    ${BRANCH}`);
 
     if (!args.noClaude && cmuxAvailable()) {
-      const wsRaw = await mustCapture(["cmux", "new-workspace", "--name", NAME]);
-      const wsMatch = wsRaw.match(/workspace:\d+/);
-      if (wsMatch) {
-        const WS = wsMatch[0];
-        const panes = await cmuxJson(["list-panes", "--workspace", WS]);
-        const leftSurface = panes.panes[0].surface_refs?.[0];
-        if (leftSurface) {
-          await cmuxCall(["send", "--workspace", WS, "--surface", leftSurface, `cd '${WT}' && claude --dangerously-skip-permissions --name "${NAME}"\n`]);
-        }
+      const WS = await createCmuxWorkspace(NAME);
+      const panes = await cmuxJson(["list-panes", "--workspace", WS]);
+      const leftSurface = panes.panes[0].surface_refs?.[0];
+      if (leftSurface) {
+        await cmuxCall(["send", "--workspace", WS, "--surface", leftSurface, `cd '${WT}' && claude --dangerously-skip-permissions --name "${NAME}"\n`]);
       }
     }
 
@@ -253,8 +314,6 @@ export async function wtCommand(argv: string[]): Promise<number> {
   }
 
   const NGROK_PREFIX = process.env.WT_NGROK_PREFIX || "ae";
-  const WT_ROOT = resolve(REPO, ".worktrees");
-
   // Before computing the next agent number, sweep abandoned worktrees:
   // any worktree whose ports are all dead and has no open/draft PR gets
   // removed so its slot is freed and numbers stay low.
@@ -495,18 +554,17 @@ export async function wtCommand(argv: string[]): Promise<number> {
     // Every cmux command carries --workspace so nothing leaks into Claude's
     // workspace — learned the hard way: --surface alone still uses
     // $CMUX_WORKSPACE_ID to route the split.
-    const wsRaw = await mustCapture(["cmux", "new-workspace", "--name", `agent-${N}`]);
-    const wsMatch = wsRaw.match(/workspace:\d+/);
-    if (!wsMatch) throw new Error(`cmux new-workspace failed: ${wsRaw}`);
-    const WS = wsMatch[0];
+    const WS = await createCmuxWorkspace(`agent-${N}`);
 
     const panes = await cmuxJson(["list-panes", "--workspace", WS]);
     const PANE_L = panes.panes[0].ref as string;
+    const LEFT_SURFACE = panes.panes[0].surface_refs?.[0] as string | undefined;
+    if (!LEFT_SURFACE) throw new Error(`cmux list-panes returned no surfaces for ${WS}`);
 
     // Right column: new-split right creates a pane with a default terminal
     // surface — we capture that ref so we can drop it after adding the
     // browser (keeps the browser as the only tab, auto-selected on focus).
-    const trSplit = await cmuxJson(["new-split", "right", "--workspace", WS, "--panel", PANE_L]);
+    const trSplit = await cmuxNewSplit("right", WS, LEFT_SURFACE, PANE_L);
     const TR_DEFAULT = trSplit.surface_ref as string;
     const PANE_TR = trSplit.pane_ref as string;
     const browserOut = await cmuxJson(["new-surface", "--type", "browser", "--pane", PANE_TR, "--workspace", WS, "--url", `https://${APP_DOMAIN}`]);
@@ -515,7 +573,7 @@ export async function wtCommand(argv: string[]): Promise<number> {
 
     // Bottom-right pane for services: split down from PANE_TR. The default
     // terminal in the split becomes service #1 (app).
-    const brSplit = await cmuxJson(["new-split", "down", "--workspace", WS, "--panel", PANE_TR]);
+    const brSplit = await cmuxNewSplit("down", WS, BROWSER, PANE_TR);
     const S1 = brSplit.surface_ref as string;
     const PANE_BR = brSplit.pane_ref as string;
     const s2 = await cmuxJson(["new-surface", "--type", "terminal", "--pane", PANE_BR, "--workspace", WS]);
@@ -550,7 +608,7 @@ export async function wtCommand(argv: string[]): Promise<number> {
       const leftSurface = leftPanes.panes[0].surface_refs?.[0];
       if (leftSurface) {
         await cmuxCall(["send", "--workspace", WS, "--surface", leftSurface, `cd '${WT}' && claude --dangerously-skip-permissions --name "agent-${N}"\n`]);
-        await cmuxCall(["focus-panel", "--panel", leftSurface]);
+        await cmuxCall(["focus-panel", "--workspace", WS, "--panel", leftSurface]);
         // Wait for Claude to fully render its input prompt, then send the
         // orientation message and a separate \n so Enter actually submits.
         const taskLine = args.task ? `\n\nYour task: ${args.task}` : "";
@@ -584,7 +642,7 @@ export async function wtCommand(argv: string[]): Promise<number> {
   }
 
   console.log(`worktree:  ${WT}`);
-  console.log(`branch:    wt/${NAME}`);
+  console.log(`branch:    ${BRANCH}`);
   console.log(`agent:     ${N} (${DEV_EMAIL})`);
   console.log(`app:       http://localhost:${APP}   →  https://${APP_DOMAIN}`);
   console.log(`marketing: http://localhost:${MKT}   →  https://${MKT_DOMAIN}`);
