@@ -240,9 +240,68 @@ export async function wtCommand(argv: string[]): Promise<number> {
   const NGROK_PREFIX = process.env.WT_NGROK_PREFIX || "ae";
   const WT_ROOT = resolve(REPO, ".worktrees");
 
-  // Pick the lowest agent number not already claimed by an existing worktree.
-  // Scans .ngrok.yml files so slots are reused after GC — agent number equals
-  // the real count of live agents rather than a monotonic counter.
+  // Before computing the next agent number, sweep abandoned worktrees:
+  // any worktree whose ports are all dead and has no open/draft PR gets
+  // removed so its slot is freed and numbers stay low.
+  if (existsSync(WT_ROOT)) {
+    const busyNow = await busyListenPorts();
+    for (const entry of readdirSync(WT_ROOT)) {
+      if (entry.startsWith(".")) continue;
+      const wtPath = resolve(WT_ROOT, entry);
+      const yml = resolve(wtPath, ".ngrok.yml");
+      if (!existsSync(yml)) continue;
+
+      // Parse ports from ngrok.yml
+      const ports: number[] = [];
+      for (const line of readFileSync(yml, "utf8").split("\n")) {
+        const m = line.match(/addr:\s*(\d+)/);
+        if (m) ports.push(Number(m[1]));
+      }
+      if (ports.length === 0) continue;
+
+      // All ports dead → check for open PR before GC-ing
+      const allDead = ports.every(p => !busyNow.has(p));
+      if (!allDead) continue;
+
+      // Check PR state via gh
+      let branchName = "";
+      const branchR = await runCapture(["git", "branch", "--show-current"], { cwd: wtPath });
+      if (branchR.code === 0) branchName = branchR.stdout.trim();
+
+      let hasOpenPr = false;
+      if (branchName) {
+        const prR = await runCapture(["gh", "pr", "list", "--head", branchName, "--json", "state", "--limit", "1"], { cwd: REPO });
+        if (prR.code === 0) {
+          try {
+            const prs = JSON.parse(prR.stdout);
+            hasOpenPr = prs.some((p: { state: string }) => p.state === "OPEN");
+          } catch {}
+        }
+      }
+
+      if (hasOpenPr) continue;
+
+      // Safe to GC — kill any lingering pids, remove worktree + branch
+      console.log(`[wt] sweeping abandoned worktree: ${entry}`);
+      for (const port of ports) {
+        const lsR = await runCapture(["lsof", "-ti", `tcp:${port}`]);
+        if (lsR.code === 0 && lsR.stdout.trim()) {
+          for (const pid of lsR.stdout.trim().split("\n")) await runCapture(["kill", "-9", pid.trim()]);
+        }
+        try {
+          await fetch(`http://127.0.0.1:4040/api/tunnels/${encodeURIComponent(`app-${entry}`)}`, {
+            method: "DELETE", signal: AbortSignal.timeout(1000),
+          });
+        } catch {}
+      }
+      await runCapture(["git", "worktree", "remove", "--force", wtPath], { cwd: REPO });
+      if (branchName?.startsWith("wt/")) {
+        await runCapture(["git", "branch", "-D", branchName], { cwd: REPO });
+      }
+    }
+  }
+
+  // Pick the lowest agent number not already claimed by a live worktree.
   function nextAgentNumber(): number {
     const used = new Set<number>();
     if (existsSync(WT_ROOT)) {

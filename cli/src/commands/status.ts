@@ -276,13 +276,23 @@ Columns: agent · branch · app/mkt/api ports (●=up ○=down) · PR state
     console.log("");
   }
 
-  // ─── Auto-gc merged worktrees ───────────────────────────────────────────
+  // ─── Auto-gc merged + abandoned worktrees ──────────────────────────────
+
+  // Abandoned = all ports dead + no open/draft PR
+  const abandoned = infos.filter((w) =>
+    w.prState === "none" &&
+    w.tunnels.length > 0 &&
+    w.tunnels.every((t) => !w.portAlive[t.addr])
+  );
 
   const merged = infos.filter((w) => w.prState === "merged");
-  if (merged.length === 0 || noGc) return 0;
+  const toGc = [...merged, ...abandoned];
+  if (toGc.length === 0 || noGc) return 0;
 
-  console.log(`  ${merged.length} merged worktree(s) found — cleaning up automatically…`);
-  for (const wt of merged) {
+  if (merged.length > 0) console.log(`  ${merged.length} merged worktree(s) — cleaning up…`);
+  if (abandoned.length > 0) console.log(`  ${abandoned.length} abandoned worktree(s) (ports dead, no PR) — cleaning up…`);
+
+  for (const wt of toGc) {
     await gcWorktree(wt, repoRoot);
   }
   console.log("");
