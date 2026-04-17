@@ -1,6 +1,7 @@
-# ara.engineer web
+# ara.engineer
 
-Static landing page for the `ae` CLI. Deployed to Vercel.
+Static landing page for the `ae` CLI. Deployed to Vercel at https://ara.engineer.
+Sibling of `../cli/` in this repo.
 
 ## Files
 

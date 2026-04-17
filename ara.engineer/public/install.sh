@@ -31,11 +31,11 @@ fi
 
 # ── install deps ────────────────────────────────────────────────────────────
 say "Installing dependencies"
-(cd "$INSTALL_DIR/ae" && bun install --silent)
+(cd "$INSTALL_DIR/cli" && bun install --silent)
 
 # ── link binary ─────────────────────────────────────────────────────────────
 mkdir -p "$BIN_DIR"
-ln -snf "$INSTALL_DIR/ae/bin/ae" "$BIN_DIR/ae"
+ln -snf "$INSTALL_DIR/cli/bin/ae" "$BIN_DIR/ae"
 say "Linked $BIN_DIR/ae"
 
 # ── warn if not on PATH ─────────────────────────────────────────────────────

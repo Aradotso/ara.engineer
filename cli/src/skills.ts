@@ -4,8 +4,8 @@
 //   1. $AE_SKILLS_ROOT                  (explicit override — colon-separated OK)
 //   2. ~/.claude/skills/                (where astack/setup symlinks them)
 //   3. ~/lab/astack/                    (legacy source of truth, pre-rename)
-//   4. ~/lab/ara.engineer/              (future home when skills migrate here)
-//   5. <cli>/..                         (sibling layout — same as astack/cli/)
+//   4. ~/lab/ae/                        (future home when skills migrate here)
+//   5. <cli>/..                         (sibling layout)
 //
 // This keeps `ae` standalone: it can be installed anywhere and still find
 // every skill the user has locally.
@@ -26,7 +26,7 @@ export type Skill = {
 
 function cliDir(): string {
   const self = realpathSync(import.meta.url.replace(/^file:\/\//, ""));
-  // this file: <ae>/src/skills.ts  →  <ae> = two levels up from dirname
+  // this file: <cli>/src/skills.ts  →  <cli> = one level up from dirname
   return resolve(dirname(self), "..");
 }
 
@@ -38,7 +38,7 @@ export function candidateRoots(): string[] {
   }
   roots.push(resolve(homedir(), ".claude/skills"));
   roots.push(resolve(homedir(), "lab/astack"));
-  roots.push(resolve(homedir(), "lab/ara.engineer"));
+  roots.push(resolve(homedir(), "lab/ae"));
   roots.push(resolve(cliDir(), ".."));
   // Deduplicate while preserving order.
   const seen = new Set<string>();
@@ -121,7 +121,7 @@ function readSkillsFromRoot(root: string): Skill[] {
 
   for (const e of entries) {
     if (!e.isDirectory() && !e.isSymbolicLink()) continue;
-    if (e.name.startsWith(".") || e.name === "node_modules" || e.name === "ae" || e.name === "web" || e.name === "cli") continue;
+    if (e.name.startsWith(".") || e.name === "node_modules" || e.name === "cli" || e.name === "ara.engineer") continue;
     const dir = resolve(root, e.name);
     const skillPath = resolve(dir, "SKILL.md");
     if (!existsSync(skillPath)) continue;
