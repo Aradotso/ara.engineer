@@ -1,7 +1,7 @@
 // ae poll — watch Linear for In Progress issues assigned to Adi, spawn ae wt,
 // then track PR lifecycle: open → In Review, merged → Done.
 
-import { existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { homedir } from "node:os";
 
@@ -93,22 +93,24 @@ async function getPrForBranch(branch: string): Promise<{ number: number; state: 
   } catch { return null; }
 }
 
-const AE_BIN = Bun.which("ae") ?? resolve(homedir(), ".bun/bin/ae");
+const SPAWN_PATH = [
+  `${homedir()}/.bun/bin`,
+  `${homedir()}/.local/bin`,
+  "/opt/homebrew/bin",
+  "/usr/local/bin",
+  "/usr/bin",
+  "/usr/sbin",
+  "/bin",
+  "/sbin",
+  "/Applications/cmux.app/Contents/Resources/bin",
+].join(":");
 
 function spawnWt(title: string): void {
-  // Spawn ae wt directly — it creates its own cmux workspace.
-  // CMUX_WORKSPACE_ID just needs to be non-empty to trigger the cmux path in ae wt.
-  const child = Bun.spawn([AE_BIN, "wt", title], {
-    cwd: ARA_REPO,
-    env: {
-      ...process.env,
-      CMUX_WORKSPACE_ID: process.env.CMUX_WORKSPACE_ID ?? "poll",
-      PATH: `${homedir()}/.bun/bin:${homedir()}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/Applications/cmux.app/Contents/Resources/bin`,
-      HOME: homedir(),
-    },
-    stdout: openSync("/tmp/ae-wt-spawn.log", "a"),
-    stderr: openSync("/tmp/ae-wt-spawn.log", "a"),
-  });
+  // Use bash -c '... &' to fully detach ae wt from the poll daemon's event loop.
+  const safe = title.replace(/'/g, "'\\''");
+  const ae = Bun.which("ae") ?? `${homedir()}/.bun/bin/ae`;
+  const cmd = `export PATH='${SPAWN_PATH}' HOME='${homedir()}' CMUX_WORKSPACE_ID=poll; cd '${ARA_REPO}'; ${ae} wt '${safe}' >> /tmp/ae-wt-spawn.log 2>&1`;
+  Bun.spawnSync(["bash", "-c", `${cmd} &`]);
 }
 
 // ─── core poll ────────────────────────────────────────────────────────────────
