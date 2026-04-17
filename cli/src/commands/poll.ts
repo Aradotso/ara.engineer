@@ -337,7 +337,9 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
     } else {
       saveCmuxSession(ws, process.env.CMUX_SURFACE_ID ?? "");
     }
+    // Kill any existing daemon — ensures exactly one instance
     Bun.spawnSync(["pkill", "-9", "-f", "index.ts poll --loop"], { stdout: "pipe", stderr: "pipe" });
+    await Bun.sleep(500); // let old process die before starting new one
     installAsBackground(apiKey);
     // Live dashboard — redraws every 3s like ae status
     const DOTS = ["⋯", " ⋯", "  ⋯"];
@@ -387,6 +389,10 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
   }
 
   if (argv.includes("--loop")) {
+    // Guard: exit if another --loop is already running (prevents duplicate spawns)
+    const r = Bun.spawnSync(["pgrep", "-f", "index.ts poll --loop"], { stdout: "pipe", stderr: "pipe" });
+    const pids = r.stdout.toString().trim().split("\n").filter(Boolean).map(Number).filter(p => p !== process.pid);
+    if (pids.length > 0) { console.error(`[poll] already running (PIDs: ${pids.join(",")}), exiting`); process.exit(0); }
     process.on("exit", (code) => console.error(`[poll] EXIT code=${code}`));
     process.on("SIGTERM", () => { console.error("[poll] SIGTERM received"); process.exit(0); });
     process.on("SIGINT",  () => { console.error("[poll] SIGINT received");  process.exit(0); });
