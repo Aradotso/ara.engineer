@@ -1,0 +1,19 @@
+{
+  "name": "ae",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Ara engineer CLI — skills, worktrees, dev env. The new home of astack.",
+  "type": "module",
+  "bin": {
+    "ae": "./bin/ae"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "bun build src/index.ts --compile --outfile bin/ae-compiled"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.5.0"
+  }
+}

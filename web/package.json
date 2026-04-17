@@ -1,0 +1,10 @@
+{
+  "name": "ara.engineer-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Landing page for the ae CLI — deployed to Vercel at ara.engineer.",
+  "scripts": {
+    "dev": "python3 -m http.server --directory public 3210",
+    "deploy": "vercel deploy --prod"
+  }
+}
