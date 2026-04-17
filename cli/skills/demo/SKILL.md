@@ -1,5 +1,5 @@
 ---
-name: ae-demo
+name: demo
 version: 1.0.0
 description: |
   Record and post an animated demo of a UI feature built in an ae worktree. Full pipeline:
@@ -7,7 +7,7 @@ description: |
   chapter overlays) → convert webm→mp4→gif → upload to Cloudflare R2 → post inline to GitHub PR.
   Use after building any UI change to produce visual proof on the PR.
 triggers:
-  - "ae demo"
+  - "demo"
   - "record a demo"
   - "demo the feature"
   - "show proof on pr"
