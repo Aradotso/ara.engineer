@@ -328,10 +328,10 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
       if (r.exitCode === 0) { try { spawnSurface = JSON.parse(r.stdout.toString()).surface_ref ?? ""; } catch {} }
     }
     if (spawnSurface) {
-      // Start a watcher loop in the spawn shell — polls ~/.ae-poll-triggers/ and
-      // runs any .sh files it finds. Runs inside cmux so ae wt has full socket access.
+      // Start a watcher in bash (not zsh — zsh nullglob errors stop the loop).
+      // Shows a live feed of spawned issues so the terminal is a useful monitor.
       mkdirSync(TRIGGER_DIR, { recursive: true });
-      const watcherCmd = `while :; do for f in '${TRIGGER_DIR}'/*.sh; do [ -f "$f" ] && bash "$f" && rm -f "$f"; done; sleep 1; done\n`;
+      const watcherCmd = `bash -c 'echo "ae poll watcher ready"; while :; do for f in ${TRIGGER_DIR}/*.sh; do [ -f "$f" ] || continue; title=$(head -1 "$f" | sed "s/ae wt //;s/'"'"'//g"); echo "▶ spawning: $title"; bash "$f" && rm -f "$f" && echo "✓ workspace created: $title"; done; sleep 1; done'\n`;
       Bun.spawnSync([CMUX_BIN, "send", "--workspace", ws, "--surface", spawnSurface, watcherCmd]);
       saveCmuxSession(ws, spawnSurface);
     } else {
@@ -340,7 +340,12 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
     Bun.spawnSync(["pkill", "-9", "-f", "index.ts poll --loop"], { stdout: "pipe", stderr: "pipe" });
     installAsBackground(apiKey);
     console.log(`✓ ae poll running — move a Linear issue to In Progress to spawn ae wt`);
-    console.log(`  Logs:  tail -f ~/.ae-poll.log`);
+    console.log(`  Ctrl-C to stop watching (daemon keeps running)\n`);
+    // Stay live as a monitor — tail the poll log
+    const tail = Bun.spawn(["tail", "-f", resolve(homedir(), ".ae-poll.log")],
+      { stdout: "inherit", stderr: "ignore" });
+    process.on("SIGINT", () => { tail.kill(); process.exit(0); });
+    await tail.exited;
     return 0;
   }
 
