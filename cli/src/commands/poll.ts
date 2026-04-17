@@ -206,11 +206,11 @@ async function getApiKeyFromRailway(): Promise<string | null> {
 }
 
 function installAsBackground(apiKey: string): void {
-  // Run ae poll --loop as a background process in the current shell.
-  // Since this runs inside a cmux terminal, it inherits full cmux socket access
-  // so ae wt can create proper cmux workspaces.
+  // Run without nohup — cmux checks process credentials and rejects nohup-detached processes.
+  // Running as a direct background job keeps us in the cmux process hierarchy.
+  // We use disown to detach from the shell's job table without losing cmux credentials.
   const ae = Bun.which("ae") ?? `${homedir()}/.bun/bin/ae`;
-  const cmd = `nohup env LINEAR_API_KEY='${apiKey}' '${ae}' poll --loop >> ~/.ae-poll.log 2>&1 &\necho "ae-poll PID: $!"`;
+  const cmd = `LINEAR_API_KEY='${apiKey}' '${ae}' poll --loop >> ~/.ae-poll.log 2>&1 & disown\necho "ae-poll PID: $!"`;
   Bun.spawnSync(["bash", "-c", cmd], { stdio: ["inherit", "inherit", "inherit"] });
 }
 
