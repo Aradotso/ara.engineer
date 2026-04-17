@@ -78,14 +78,16 @@ async function updateIssueState(apiKey: string, issueId: string, stateId: string
   `, { id: issueId, stateId });
 }
 
+const GH_BIN = Bun.which("gh") ?? resolve(homedir(), ".local/bin/gh");
+
 async function getPrForBranch(branch: string): Promise<{ number: number; state: string } | null> {
   const repoDir = existsSync(ARA_REPO) ? ARA_REPO : process.cwd();
-  const r = Bun.spawnSync(
-    ["gh", "pr", "list", "--head", branch, "--json", "number,state", "--limit", "1"],
-    { stdout: "pipe", stderr: "pipe", cwd: repoDir },
-  );
-  if (r.exitCode !== 0) return null;
   try {
+    const r = Bun.spawnSync(
+      [GH_BIN, "pr", "list", "--head", branch, "--json", "number,state", "--limit", "1"],
+      { stdout: "pipe", stderr: "pipe", cwd: repoDir },
+    );
+    if (r.exitCode !== 0) return null;
     const prs = JSON.parse(r.stdout.toString().trim()) as Array<{ number: number; state: string }>;
     return prs[0] ?? null;
   } catch { return null; }
@@ -122,6 +124,9 @@ async function pollOnce(apiKey: string): Promise<void> {
       };
     }
   }
+
+  // Persist spawned issues before PR checks (so a gh failure doesn't re-spawn next cycle)
+  saveState(state);
 
   // Update Linear state based on PR lifecycle
   for (const [id, tracked] of Object.entries(state.tracked)) {
