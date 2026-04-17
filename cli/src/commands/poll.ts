@@ -106,7 +106,8 @@ function spawnWt(title: string): void {
       PATH: `${homedir()}/.bun/bin:${homedir()}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`,
       HOME: homedir(),
     },
-    stdio: ["ignore", "ignore", "ignore"],
+    stdout: Bun.file("/tmp/ae-wt-spawn.log"),
+    stderr: Bun.file("/tmp/ae-wt-spawn.log"),
   });
   child.unref(); // don't block the poll loop
 }
