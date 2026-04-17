@@ -10,7 +10,8 @@
 // Ports increment past anything already listening.
 
 import { $ } from "bun";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, unlinkSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, symlinkSync, unlinkSync, statSync } from "node:fs";
+import { writeWorktreeContext } from "./context.ts";
 import { resolve, dirname, basename } from "node:path";
 import { homedir } from "node:os";
 
@@ -229,13 +230,29 @@ export async function wtCommand(argv: string[]): Promise<number> {
   }
 
   const NGROK_PREFIX = process.env.WT_NGROK_PREFIX || "ae";
-  const COUNTER = resolve(REPO, ".worktrees", ".agent-counter");
+  const WT_ROOT = resolve(REPO, ".worktrees");
 
-  // atomic-ish counter read+bump (single-user machine — good enough)
-  mkdirSync(dirname(COUNTER), { recursive: true });
-  if (!existsSync(COUNTER)) writeFileSync(COUNTER, "0");
-  const N = Number(readFileSync(COUNTER, "utf8").trim() || "0") + 1;
-  writeFileSync(COUNTER, String(N));
+  // Pick the lowest agent number not already claimed by an existing worktree.
+  // Scans .ngrok.yml files so slots are reused after GC — agent number equals
+  // the real count of live agents rather than a monotonic counter.
+  function nextAgentNumber(): number {
+    const used = new Set<number>();
+    if (existsSync(WT_ROOT)) {
+      for (const entry of readdirSync(WT_ROOT)) {
+        const yml = resolve(WT_ROOT, entry, ".ngrok.yml");
+        if (!existsSync(yml)) continue;
+        for (const line of readFileSync(yml, "utf8").split("\n")) {
+          const m = line.match(/app-(\d+):/);
+          if (m) used.add(Number(m[1]));
+        }
+      }
+    }
+    let n = 1;
+    while (used.has(n)) n++;
+    return n;
+  }
+
+  const N = nextAgentNumber();
 
   // Slot-based port allocation keyed to agent number — deterministic, avoids
   // the race where back-to-back runs both see the same "free" port because the
@@ -442,12 +459,14 @@ export async function wtCommand(argv: string[]): Promise<number> {
     await cmuxCall(["send", "--workspace", WS, "--surface", S3, API_CMD + "\n"]);
     await cmuxCall(["send", "--workspace", WS, "--surface", S4, NG_CMD + "\n"]);
 
+    writeWorktreeContext({ name: NAME, wt: WT, n: N, devEmail: DEV_EMAIL, devPassword: DEV_TEST_PASSWORD, app: APP, mkt: MKT, api: API, appDomain: APP_DOMAIN, mktDomain: MKT_DOMAIN, apiDomain: API_DOMAIN, ws: WS, browser: BROWSER, s1: S1, s2: S2, s3: S3, s4: S4 });
+
     // Auto-spawn claude in the left pane (was the ccwt alias).
     if (!args.noClaude) {
       const leftPanes = await cmuxJson(["list-panes", "--workspace", WS]);
       const leftSurface = leftPanes.panes[0].surface_refs?.[0];
       if (leftSurface) {
-        await cmuxCall(["send", "--workspace", WS, "--surface", leftSurface, "claude --dangerously-skip-permissions\n"]);
+        await cmuxCall(["send", "--workspace", WS, "--surface", leftSurface, `cd '${WT}' && claude --dangerously-skip-permissions\n`]);
         await cmuxCall(["focus-panel", "--panel", leftSurface]);
       }
     }
