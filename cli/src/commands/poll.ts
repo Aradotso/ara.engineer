@@ -13,13 +13,21 @@ const STATE_DONE = "2d48ea35-d79a-47fb-a3f1-c94fb29e2592";
 const STATE_FILE = resolve(homedir(), ".ae-poll-state.json");
 const PLIST_PATH = resolve(homedir(), "Library/LaunchAgents/so.ara.ae-poll.plist"); // kept for --uninstall cleanup
 
-// Presume the user runs `ae poll` from their Ara checkout. Fall back to the
-// legacy hardcoded path only if cwd isn't a git repo.
+// Presume the user runs `ae poll` from their Ara checkout. Fall back to a
+// per-user hardcoded path only if cwd isn't a git repo.
 function findAraRepo(): string {
   const cwd = process.cwd();
   if (existsSync(resolve(cwd, ".git"))) return cwd;
-  const legacy = resolve(homedir(), "github/Ara");
-  if (existsSync(legacy)) return legacy;
+  const home = homedir();
+  const candidates = [
+    home === "/Users/sve" ? "/Users/sve/Ara" : null,
+    home === "/Users/adisingh" ? "/Users/adisingh/github/Ara" : null,
+    resolve(home, "Ara"),
+    resolve(home, "github/Ara"),
+  ].filter((p): p is string => p !== null);
+  for (const p of candidates) {
+    if (existsSync(resolve(p, ".git"))) return p;
+  }
   return cwd;
 }
 const ARA_REPO = findAraRepo();

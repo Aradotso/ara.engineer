@@ -114,7 +114,10 @@ async function mustCapture(cmd: string[], opts: { cwd?: string } = {}): Promise<
 async function resolveRepoRoot(): Promise<string> {
   const r = await runCapture(["git", "rev-parse", "--git-common-dir"]);
   if (r.code === 0 && r.stdout.trim()) return resolve(r.stdout.trim(), "..");
-  return resolve(homedir(), "lab/Ara");
+  const home = homedir();
+  if (home === "/Users/sve") return "/Users/sve/Ara";
+  if (home === "/Users/adisingh") return "/Users/adisingh/github/Ara";
+  return resolve(home, "Ara");
 }
 
 async function branchExists(repoRoot: string, branchName: string): Promise<boolean> {

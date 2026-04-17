@@ -38,7 +38,10 @@ async function run(cmd: string[], cwd?: string): Promise<{ code: number; out: st
 async function resolveRepoRoot(): Promise<string> {
   const r = await run(["git", "rev-parse", "--git-common-dir"]);
   if (r.code === 0 && r.out) return resolve(r.out.trim(), "..");
-  return resolve(homedir(), "lab/Ara");
+  const home = homedir();
+  if (home === "/Users/sve") return "/Users/sve/Ara";
+  if (home === "/Users/adisingh") return "/Users/adisingh/github/Ara";
+  return resolve(home, "Ara");
 }
 
 function parseNgrokYml(path: string): Tunnel[] {
