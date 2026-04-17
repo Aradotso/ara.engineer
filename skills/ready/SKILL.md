@@ -1,100 +1,82 @@
 ---
 name: ready
-version: 1.0.0
+version: 2.0.0
 description: |
-  Pre-flight check — verifies all CLIs are authenticated and ready for coding. Checks railway, supabase, axiom, stripe, vercel, linear, cmux, and git. Runs in a cmux split when available.
+  Pre-flight check — verifies CLIs (railway, blaxel, gh) and MCP connections (supabase, linear, stripe, vercel, posthog, axiom). CLIs tested via bash, MCPs tested by calling their tools directly.
 allowed-tools:
   - Bash
   - Read
+  - MCP
 ---
 
 # /ready — Pre-flight Check
 
-Verify every CLI is installed, authenticated, and pointing at the right project.
+## What's a CLI vs MCP
 
-## Cmux rules
+| Type | Tools | How to test |
+|------|-------|-------------|
+| CLI | `railway`, `bl` (blaxel), `gh` | Bash commands |
+| MCP via claude.ai | supabase, linear, stripe, vercel, posthog | Call MCP tools directly |
+| CLI + MCP | axiom | `axiom` CLI for queries; no MCP |
 
-When `command -v cmux` succeeds:
-
-1. Open a worker split — don't run the full check inline in your shell.
-2. Batch checks with `;` not `&&` so one failure doesn't abort the rest.
-3. Wait ~12s after sending, then `cmux capture-pane --surface "$WORKER" --scrollback`.
-4. Leave the worker pane open after `/ready`.
-
-```bash
-WORKER=$(cmux --json new-split right | python3 -c "import sys,json; print(json.load(sys.stdin)['surface_ref'])")
-```
-
-Fall back to running inline if cmux is unavailable.
-
-## Procedure
-
-### 1. Run checks
-
-Send as one batch to the worker:
+## Step 1: Check CLIs
 
 ```bash
-cmux send --surface "$WORKER" "
-echo '=== RAILWAY ===' && railway --version && railway status 2>&1;
-echo '=== SUPABASE ===' && supabase --version && supabase projects list 2>&1 | head -5;
-echo '=== AXIOM ===' && axiom version && axiom dataset info logs 2>&1 | head -5;
-echo '=== STRIPE ===' && stripe version && stripe customers list --limit 1 2>&1 | head -5;
-echo '=== VERCEL ===' && vercel --version && vercel whoami 2>&1;
-echo '=== LINEAR ===' && linear team list 2>&1 | head -5;
-echo '=== BLAXEL ===' && bl version 2>&1 && bl get sandboxes 2>&1 | head -5;
-echo '=== CMUX ===' && cmux version 2>&1;
-echo '=== GIT ===' && git --version && cd ~/github/Ara && git remote -v && git branch --show-current && git worktree list | head -8;
-echo '---DONE---'
-\n"
-sleep 14
-cmux capture-pane --surface "$WORKER" --scrollback
+echo '=== RAILWAY ===' && railway --version && railway status 2>&1
+echo '=== BLAXEL ===' && bl version 2>&1 && bl get sandboxes 2>&1 | head -5
+echo '=== GH ===' && gh --version && gh auth status 2>&1
+echo '=== AXIOM ===' && axiom version && axiom dataset info logs 2>&1 | head -5
+echo '=== GIT ===' && cd ~/github/Ara && git branch --show-current && git worktree list | head -8
 ```
 
-### 2. Railway — link worktrees
-
-Railway link metadata is per-directory. Every new worktree needs a one-time link:
-
+Railway — link worktree if needed:
 ```bash
 cd ~/github/Ara
 if ! railway status 2>&1 | grep -q "Ara Backend"; then
   railway link --workspace "Ara" --project "Ara Backend" --environment "prd" --service "ara-api" --json
 fi
-railway status
 ```
 
-### 3. Pass/fail hints
+## Step 2: Check MCPs
 
-| Tool | PASS | FAIL / Fix |
-|------|------|------------|
-| railway | `railway status` shows linked project | `railway link ...` (see above) |
-| supabase | `projects list` without auth error | `supabase login` |
-| axiom | `dataset info logs` works | `axiom auth login` |
-| stripe | `customers list` succeeds | `stripe login` — never paste `config --list` |
-| vercel | `vercel whoami` | `vercel login` |
-| linear | `team list` shows teams | `export LINEAR_API_KEY=lin_api_xxx` |
-| blaxel | `bl get sandboxes` lists sandboxes | `bl login ara` |
-| cmux | `cmux version` | Install cmux |
-| git | sensible remote in Ara | N/A |
+Call each MCP tool directly and verify it returns data (not an auth error):
+
+- **Supabase**: `mcp__claude_ai_Supabase__list_projects`
+- **Linear**: `mcp__claude_ai_Linear__list_teams`
+- **Stripe**: `mcp__claude_ai_Stripe__get_stripe_account_info`
+- **Vercel**: `mcp__claude_ai_Vercel__list_projects`
+- **PostHog**: `mcp__claude_ai_PostHog__projects-get`
 
 ## Output
-
-Print a table:
 
 ```
 ## Ready Check
 
-| Tool     | Version | Status | Detail               |
-|----------|---------|--------|----------------------|
-| railway  | 4.x.x   | PASS   | Ara Backend / prd    |
-| supabase | 2.x.x   | PASS   | Projects visible     |
-| axiom    | 0.x.x   | PASS   | logs dataset OK      |
-| stripe   | 1.x.x   | PASS   | API call OK          |
-| vercel   | 50.x    | PASS   | User: adi@ara.so     |
-| linear   | 0.3.x   | PASS   | Ara team visible     |
-| blaxel   | x.x.x   | PASS   | Sandboxes visible    |
-| stripe   | 1.x.x   | PASS   | API call OK          |
-| cmux     | x.x.x   | PASS   | Running              |
-| git      | 2.x.x   | PASS   | Branch: main         |
+### CLIs
+| Tool    | Version | Status | Detail                    |
+|---------|---------|--------|---------------------------|
+| railway | 4.x.x   | PASS   | Ara Backend / prd linked  |
+| blaxel  | x.x.x   | PASS   | Sandboxes visible         |
+| gh      | 2.x.x   | PASS   | Logged in as adi@ara.so   |
+| axiom   | 0.x.x   | PASS   | logs dataset OK           |
+| git     | 2.x.x   | PASS   | Branch: main              |
 
-Ready: 10/10 — All systems go.
+### MCPs
+| Tool     | Status | Detail               |
+|----------|--------|----------------------|
+| supabase | PASS   | Projects visible     |
+| linear   | PASS   | Ara team visible     |
+| stripe   | PASS   | Account connected    |
+| vercel   | PASS   | Projects visible     |
+| posthog  | PASS   | Project 324142 OK    |
+
+Ready: 10/10
 ```
+
+## Fix hints
+
+- **railway**: `railway link --workspace "Ara" --project "Ara Backend" --environment "prd" --service "ara-api"`
+- **blaxel**: `bl login ara`
+- **gh**: `gh auth login`
+- **axiom**: `axiom auth login`
+- **MCPs**: reconnect via claude.ai settings if auth errors
