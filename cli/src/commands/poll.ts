@@ -279,14 +279,20 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
     // Create a dedicated spawn-shell terminal surface in the current cmux workspace.
     // ae wt injected into a real shell (not the Claude surface) has full cmux privileges.
     const ws = process.env.CMUX_WORKSPACE_ID ?? "";
-    const panelId = process.env.CMUX_PANEL_ID ?? process.env.CMUX_SURFACE_ID ?? "";
     let spawnSurface = "";
-    if (ws && panelId) {
+    if (ws) {
+      // Get the pane ref in pane:N format (cmux requires this, not the UUID CMUX_PANEL_ID)
+      let paneRef = "";
+      try {
+        const pr = Bun.spawnSync([CMUX_BIN, "--json", "list-panes", "--workspace", ws], { stdout: "pipe", stderr: "pipe" });
+        if (pr.exitCode === 0) paneRef = JSON.parse(pr.stdout.toString()).panes?.[0]?.ref ?? "";
+      } catch {}
+
       // Try to create a new terminal surface in the current workspace
-      const r = Bun.spawnSync(
-        [CMUX_BIN, "--json", "new-surface", "--type", "terminal", "--pane", panelId, "--workspace", ws],
+      const r = paneRef ? Bun.spawnSync(
+        [CMUX_BIN, "--json", "new-surface", "--type", "terminal", "--pane", paneRef, "--workspace", ws],
         { stdout: "pipe", stderr: "pipe" },
-      );
+      ) : { exitCode: 1, stdout: Buffer.from(""), stderr: Buffer.from("") };
       if (r.exitCode === 0) {
         try { spawnSurface = JSON.parse(r.stdout.toString()).surface_ref ?? ""; } catch {}
       }
@@ -306,7 +312,7 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
     Bun.spawnSync(["pkill", "-f", "ae poll --loop"], { stdout: "pipe", stderr: "pipe" });
     installAsBackground(apiKey);
     console.log(`✓ ae poll running in background`);
-    console.log(`  ae wt will be injected via cmux send to surface ${surface}`);
+    console.log(`  ae wt will be injected via cmux send to surface ${spawnSurface || process.env.CMUX_SURFACE_ID}`);
     console.log(`  Logs:  tail -f ~/.ae-poll.log`);
     console.log(`  State: ae poll --status`);
     return 0;
