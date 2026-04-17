@@ -250,8 +250,8 @@ export async function pollCommand(argv: string[]): Promise<number> {
 
 Usage:
   ae poll                start the daemon (run from a cmux terminal, then leave)
-  ae poll --stop         kill the running daemon
-  ae poll --status       show currently tracked issues
+  ae poll status         show currently tracked issues
+  ae poll kill           kill the running daemon
 
 Flow:
   In Progress  →  ae wt <title>  (creates full cmux workspace)
@@ -263,7 +263,7 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
     return 0;
   }
 
-  if (argv.includes("--status")) {
+  if (argv[0] === "status" || argv.includes("--status")) {
     const state = loadState();
     const entries = Object.values(state.tracked);
     if (entries.length === 0) { console.log("No tracked issues."); return 0; }
@@ -276,7 +276,7 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
     return 0;
   }
 
-  if (argv.includes("--stop") || argv.includes("--uninstall")) {
+  if (argv[0] === "kill" || argv.includes("--stop") || argv.includes("--uninstall")) {
     Bun.spawnSync(["pkill", "-9", "-f", "index.ts poll --loop"], { stdout: "pipe", stderr: "pipe" });
     Bun.spawnSync(["launchctl", "unload", PLIST_PATH], { stdout: "pipe", stderr: "pipe" });
     if (existsSync(PLIST_PATH)) Bun.spawnSync(["rm", PLIST_PATH]);
