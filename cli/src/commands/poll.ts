@@ -126,20 +126,17 @@ async function pollOnce(apiKey: string): Promise<void> {
     if (!state.tracked[issue.id]) {
       console.log(`[poll] ▶ ${issue.identifier}: ${issue.title}`);
       const branch = titleToBranch(issue.title);
-      try { spawnWt(issue.title); } catch (e) { console.error(`[poll] spawn failed: ${(e as Error).message}`); }
+      // Save BEFORE spawn so a crash in spawnWt never causes a double-spawn
       state.tracked[issue.id] = {
-        id: issue.id,
-        identifier: issue.identifier,
-        title: issue.title,
-        branch,
-        spawnedAt: new Date().toISOString(),
-        linearState: "in-progress",
+        id: issue.id, identifier: issue.identifier, title: issue.title,
+        branch, spawnedAt: new Date().toISOString(), linearState: "in-progress",
       };
+      saveState(state);
+      try { spawnWt(issue.title); } catch (e) { console.error(`[poll] spawn failed: ${(e as Error).message}`); }
     }
   }
 
-  // Persist spawned issues before PR checks (so a gh failure doesn't re-spawn next cycle)
-  saveState(state);
+  saveState(state); // persist any PR-state changes below
 
   // Update Linear state based on PR lifecycle
   for (const [id, tracked] of Object.entries(state.tracked)) {
@@ -285,7 +282,12 @@ State file:         ~/.ae-poll-state.json
   }
 
   if (argv.includes("--loop")) {
-    console.log(`[poll] daemon started — polling every 60s`);
+    process.on("exit", (code) => console.error(`[poll] EXIT code=${code}`));
+    process.on("SIGTERM", () => { console.error("[poll] SIGTERM received"); process.exit(0); });
+    process.on("SIGINT",  () => { console.error("[poll] SIGINT received");  process.exit(0); });
+    process.on("uncaughtException", (e) => console.error("[poll] uncaughtException:", e.message));
+    process.on("unhandledRejection", (r) => console.error("[poll] unhandledRejection:", r));
+    console.log(`[poll] daemon started — polling every 5s`);
     while (true) {
       try { await pollOnce(apiKey); }
       catch (e) { console.error("[poll] error:", (e as Error).message); }
