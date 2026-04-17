@@ -21,12 +21,18 @@ if ! command -v bun >/dev/null 2>&1; then
 fi
 
 # ── clone or update ─────────────────────────────────────────────────────────
+# Full clone (no --depth) so `ae update` can count commits behind origin/main.
+# The repo is tiny (~5 MB); the saving from shallow clones isn't worth it.
 if [ -d "$INSTALL_DIR/.git" ]; then
   say "Updating $INSTALL_DIR"
+  # If we previously did a shallow clone, convert it.
+  if [ -f "$INSTALL_DIR/.git/shallow" ]; then
+    git -C "$INSTALL_DIR" fetch --unshallow --quiet origin main || true
+  fi
   git -C "$INSTALL_DIR" pull --ff-only --quiet
 else
   say "Cloning $REPO_URL → $INSTALL_DIR"
-  git clone --depth=1 --quiet "$REPO_URL" "$INSTALL_DIR"
+  git clone --quiet "$REPO_URL" "$INSTALL_DIR"
 fi
 
 # ── install deps ────────────────────────────────────────────────────────────
