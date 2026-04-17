@@ -231,6 +231,29 @@ export async function wtCommand(argv: string[]): Promise<number> {
 
   await mustCapture(["git", "worktree", "add", WT, "-b", `wt/${NAME}`, "HEAD"], { cwd: REPO });
 
+  // Register the new worktree path in ~/.railway/config.json so `railway run`
+  // works without needing `railway link`. We clone any existing Ara-backend/api
+  // entry so no IDs are hardcoded here.
+  try {
+    const railwayCfgPath = resolve(homedir(), ".railway/config.json");
+    if (existsSync(railwayCfgPath)) {
+      const cfg = JSON.parse(readFileSync(railwayCfgPath, "utf8"));
+      const apiPath = resolve(WT, "Ara-backend/api");
+      if (!cfg.projects[apiPath]) {
+        // Find any existing entry whose key ends with Ara-backend/api
+        const donor = Object.values(cfg.projects as Record<string, any>).find(
+          (v: any) => typeof v.projectPath === "string" && v.projectPath.endsWith("Ara-backend/api")
+        );
+        if (donor) {
+          cfg.projects[apiPath] = { ...donor, projectPath: apiPath };
+          writeFileSync(railwayCfgPath, JSON.stringify(cfg, null, 2) + "\n");
+        }
+      }
+    }
+  } catch {
+    // non-fatal — user will see "No linked project" and can railway link manually
+  }
+
   // Symlink gitignored .env.local from main tree (carries shared secrets + dev password)
   for (const d of ["app.ara.so", "ara.so", "Ara-backend", "Ara-backend/api"]) {
     const src = resolve(REPO, d, ".env.local");
