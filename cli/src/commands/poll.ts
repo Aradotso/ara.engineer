@@ -105,6 +105,20 @@ async function getPrForBranch(branch: string): Promise<{ number: number; state: 
   } catch { return null; }
 }
 
+// Resolve cmux dynamically — users may have stable (`cmux.app`) or NIGHTLY
+// (`cmux NIGHTLY.app`) installs, or cmux on PATH from a manual install.
+function findCmuxBin(): string {
+  const onPath = Bun.which("cmux");
+  if (onPath) return onPath;
+  const candidates = [
+    "/Applications/cmux.app/Contents/Resources/bin/cmux",
+    "/Applications/cmux NIGHTLY.app/Contents/Resources/bin/cmux",
+  ];
+  for (const p of candidates) if (existsSync(p)) return p;
+  return "/Applications/cmux.app/Contents/Resources/bin/cmux";
+}
+const CMUX_BIN = findCmuxBin();
+
 const SPAWN_PATH = [
   `${homedir()}/.bun/bin`,
   `${homedir()}/.local/bin`,
@@ -114,11 +128,10 @@ const SPAWN_PATH = [
   "/usr/sbin",
   "/bin",
   "/sbin",
-  "/Applications/cmux.app/Contents/Resources/bin",
+  dirname(CMUX_BIN),
 ].join(":");
 
 const SESSION_FILE = resolve(homedir(), ".ae-cmux-session");
-const CMUX_BIN = "/Applications/cmux.app/Contents/Resources/bin/cmux";
 
 function loadCmuxSession(): { ws: string; surface: string } | null {
   try {
