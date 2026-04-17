@@ -2,6 +2,7 @@
 import { wtCommand } from "./commands/wt.ts";
 import { prCommand } from "./commands/pr.ts";
 import { pollCommand } from "./commands/poll.ts";
+import { startCommand } from "./commands/start.ts";
 import { prrCommand } from "./commands/prr.ts";
 import { sessionsCommand } from "./commands/sessions.ts";
 import { statusCommand } from "./commands/status.ts";
@@ -50,6 +51,11 @@ const shimCommands: NativeCommand[] = SHIMS.map((s) => ({
 }));
 
 const coreCommands: NativeCommand[] = [
+  {
+    name: "start",
+    summary: "Open ae dashboard: ae status (left 60%) + ae poll + watcher (right)",
+    run: startCommand,
+  },
   {
     name: "wt",
     summary: "Spawn an Ara worktree + dev env + cmux layout (+ claude in left pane)",
