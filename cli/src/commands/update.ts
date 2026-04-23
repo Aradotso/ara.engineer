@@ -147,17 +147,22 @@ This updates the repo at $(dirname $(readlink -f $(which ae)))/../..
   console.log("Relinking shims");
   const bin = binDir();
   mkdirSync(bin, { recursive: true });
-  // Link ae itself too (covers the case where bin dir was wiped).
-  const { symlinkSync, unlinkSync, existsSync: _exists } = await import("node:fs");
+  // Link aracli itself too (covers the case where bin dir was wiped).
+  const { symlinkSync, unlinkSync, lstatSync } = await import("node:fs");
   const link = (target: string, alias: string) => {
     const dst = resolve(bin, alias);
-    try { if (_exists(dst)) unlinkSync(dst); } catch {}
+    // Use lstat so dangling symlinks are still detected (existsSync follows
+    // the link and returns false for broken targets, causing EEXIST on create).
+    try { lstatSync(dst); try { unlinkSync(dst); } catch {} } catch {}
     symlinkSync(target, dst);
   };
-  link(resolve(repo, "cli/bin/ae"), "ae");
+  // aracli primary + ae alias for back-compat
+  const binTarget = resolve(repo, "cli/bin/aracli");
+  link(binTarget, "aracli");
+  link(binTarget, "ae");
   for (const s of SHIMS) {
     const src = resolve(repo, "cli/shims", s.name);
-    if (_exists(src)) link(src, s.name);
+    try { lstatSync(src); link(src, s.name); } catch {}
   }
 
   console.log("Syncing skills into ~/.claude/skills");
@@ -293,16 +298,18 @@ export async function maybeAutoUpdate(argv: string[]): Promise<void> {
   const bin = binDir();
   try {
     mkdirSync(bin, { recursive: true });
-    const { symlinkSync, unlinkSync, existsSync: _exists } = await import("node:fs");
+    const { symlinkSync, unlinkSync, lstatSync } = await import("node:fs");
     const link = (target: string, alias: string) => {
       const dst = resolve(bin, alias);
-      try { if (_exists(dst)) unlinkSync(dst); } catch {}
+      try { lstatSync(dst); try { unlinkSync(dst); } catch {} } catch {}
       symlinkSync(target, dst);
     };
-    link(resolve(repo, "cli/bin/ae"), "ae");
+    const binTarget = resolve(repo, "cli/bin/aracli");
+    link(binTarget, "aracli");
+    link(binTarget, "ae");
     for (const s of SHIMS) {
       const src = resolve(repo, "cli/shims", s.name);
-      if (_exists(src)) link(src, s.name);
+      try { lstatSync(src); link(src, s.name); } catch {}
     }
   } catch {}
 
