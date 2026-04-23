@@ -81,11 +81,18 @@ function pointsInto(symlinkPath: string, rootAbs: string): { working: boolean; p
     }
   }
   // Broken symlink — inspect the raw target string for a best-effort
-  // "was this ever ours" check used by prune logic.
+  // "was this ever ours" check used by prune logic. Also match legacy ae
+  // paths (~/.ae/cli/skills/*, ~/.ae/skills/*) so teammates migrated from
+  // the ae → aracli rename have their stale symlinks cleaned up automatically.
   try {
     const raw = readlinkSync(symlinkPath);
     const abs = resolve(dirname(symlinkPath), raw);
-    return { working: false, pointsIntoRoot: abs === rootAbs || abs.startsWith(rootAbs + "/") };
+    const inCurrent = abs === rootAbs || abs.startsWith(rootAbs + "/");
+    const inLegacy =
+      abs.includes("/.ae/skills/") ||
+      abs.includes("/.ae/cli/skills/") ||
+      abs.includes("/.aracli/cli/skills/");
+    return { working: false, pointsIntoRoot: inCurrent || inLegacy };
   } catch {
     return { working: false, pointsIntoRoot: false };
   }
