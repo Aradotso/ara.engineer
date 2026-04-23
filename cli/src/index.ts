@@ -11,6 +11,7 @@ import { showCommand } from "./commands/show.ts";
 import { updateCommand, maybeKickBackgroundCheck, maybeAutoUpdate, updateBanner } from "./commands/update.ts";
 import { urlCommand } from "./commands/url.ts";
 import { skillsCommand } from "./commands/skills.ts";
+import { tickCommand } from "./commands/tick.ts";
 import { listSkills } from "./skills.ts";
 import { maybeBootstrapSkills } from "./skills-bootstrap.ts";
 import { SHIMS, shimPath } from "./shims.ts";
@@ -121,6 +122,11 @@ const coreCommands: NativeCommand[] = [
     name: "skills",
     summary: "Manage ~/.claude/skills symlinks (subcommands: sync, status)",
     run: skillsCommand,
+  },
+  {
+    name: "tick",
+    summary: "Fast, silent refresh — wired as a Claude Code PreToolUse/Skill hook",
+    run: tickCommand,
   },
 ];
 

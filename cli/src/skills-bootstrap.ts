@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import { resolve } from "node:path";
 import { homedir } from "node:os";
 import { syncSkills, formatSyncResult } from "./skills-sync.ts";
+import { ensureHooksInstalled, formatHookInstallResult } from "./hooks-install.ts";
 
 const STATE_DIR = resolve(homedir(), ".ae");
 const STAMP = resolve(STATE_DIR, "skills-synced");
@@ -28,12 +29,20 @@ export function maybeBootstrapSkills(): void {
     const r = syncSkills();
     const line = formatSyncResult(r);
     if (line) process.stderr.write(`${line}\n`);
+
+    // Also install Claude Code hooks so future skill invocations + session
+    // starts auto-refresh against the latest ae. Idempotent — skipped once
+    // they're present. Runs at most once per 24h (same stamp as skills).
+    const hookRes = ensureHooksInstalled();
+    const hookLine = formatHookInstallResult(hookRes);
+    if (hookLine) process.stderr.write(`${hookLine}\n`);
+
     try {
       mkdirSync(STATE_DIR, { recursive: true });
       writeFileSync(STAMP, new Date().toISOString());
     } catch {}
   } catch {
-    // Never fail ae because of a skills-sync hiccup.
+    // Never fail ae because of a bootstrap hiccup.
   }
 }
 
