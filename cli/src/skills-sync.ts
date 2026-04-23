@@ -38,7 +38,22 @@ export type SyncResult = {
 };
 
 export function targetSkillsDir(): string {
+  // Primary target. For multiple targets (e.g. also ~/.cursor/skills), see
+  // targetSkillsDirs(). Cursor reads ~/.claude/skills for compatibility, so
+  // this single path is enough in most cases — but we also sync to
+  // ~/.cursor/skills when that dir exists, for a cleaner native experience.
   return process.env.AE_TARGET_SKILLS_DIR || resolve(homedir(), ".claude/skills");
+}
+
+export function targetSkillsDirs(): string[] {
+  const primary = targetSkillsDir();
+  const cursorDir = resolve(homedir(), ".cursor/skills");
+  const cursorParent = resolve(homedir(), ".cursor");
+  const out = [primary];
+  // Only sync to Cursor's dir if Cursor is installed (parent dir exists).
+  // Don't provision ~/.cursor/ if the user doesn't use Cursor.
+  if (existsSync(cursorParent) && primary !== cursorDir) out.push(cursorDir);
+  return out;
 }
 
 export function sourceSkillsDir(): string {
@@ -108,11 +123,18 @@ export function syncSkills(): SyncResult {
   };
 
   const src = sourceSkillsDir();
-  const dst = targetSkillsDir();
-
   if (!existsSync(src)) return result;
-  try { mkdirSync(dst, { recursive: true }); } catch { return result; }
 
+  // Sync to every target dir (primary ~/.claude/skills + ~/.cursor/skills when
+  // Cursor is installed). Aggregate results across targets.
+  for (const dst of targetSkillsDirs()) {
+    try { mkdirSync(dst, { recursive: true }); } catch { continue; }
+    syncOne(src, dst, result);
+  }
+  return result;
+}
+
+function syncOne(src: string, dst: string, result: SyncResult): void {
   const srcAbs = realpathSync(src);
 
   // 1. Enumerate skills shipped in this ae repo (dirs with SKILL.md).
@@ -121,7 +143,7 @@ export function syncSkills(): SyncResult {
   try {
     entries = readdirSync(src, { withFileTypes: true });
   } catch {
-    return result;
+    return;
   }
   for (const e of entries) {
     if (!e.isDirectory() && !e.isSymbolicLink()) continue;
@@ -131,7 +153,7 @@ export function syncSkills(): SyncResult {
     ours.add(e.name);
   }
 
-  // 2. Link each skill into ~/.claude/skills.
+  // 2. Link each skill into the target dir.
   for (const name of ours) {
     const from = resolve(src, name);
     const to = resolve(dst, name);
@@ -178,7 +200,7 @@ export function syncSkills(): SyncResult {
   try {
     dstEntries = readdirSync(dst, { withFileTypes: true });
   } catch {
-    return result;
+    return;
   }
   for (const e of dstEntries) {
     if (!e.isSymbolicLink()) continue;
@@ -191,8 +213,6 @@ export function syncSkills(): SyncResult {
       result.pruned.push(e.name);
     } catch {}
   }
-
-  return result;
 }
 
 export function formatSyncResult(r: SyncResult): string | null {
