@@ -57,12 +57,14 @@ say "Linked into $BIN_DIR: $linked"
 
 # ── symlink bundled skills into ~/.claude/skills/ ───────────────────────────
 # This makes every ae skill available as a /skillname slash command in Claude Code.
-# Skills live at <repo>/skills in the unified layout; fall back to the old
-# cli/skills path for older checkouts.
-if [ -d "$INSTALL_DIR/skills" ]; then
-  SKILLS_SRC="$INSTALL_DIR/skills"
-else
-  SKILLS_SRC="$INSTALL_DIR/cli/skills"
+# Skills live at <repo>/skills in the unified layout.
+SKILLS_SRC="$INSTALL_DIR/skills"
+
+# Pre-unify installs had cli/skills/ which `git pull` doesn't remove (contents
+# become untracked once the directory is renamed in the repo). Wipe it so old
+# installs don't hold a ghost copy next to the canonical <repo>/skills.
+if [ -d "$SKILLS_SRC" ] && [ -d "$INSTALL_DIR/cli/skills" ]; then
+  rm -rf "$INSTALL_DIR/cli/skills"
 fi
 CLAUDE_SKILLS="$HOME/.claude/skills"
 if [ -d "$SKILLS_SRC" ]; then

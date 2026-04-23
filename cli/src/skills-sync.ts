@@ -22,6 +22,7 @@ import {
   readdirSync,
   readlinkSync,
   realpathSync,
+  rmSync,
   symlinkSync,
   unlinkSync,
 } from "node:fs";
@@ -42,14 +43,21 @@ export function targetSkillsDir(): string {
 
 export function sourceSkillsDir(): string {
   // This file lives at <repo>/cli/src/skills-sync.ts. After the monorepo
-  // unification, skills/ is a top-level sibling of cli/, so the path is
-  // ../../skills. Fall back to ../skills for old checkouts (where skills
-  // were still under cli/skills) so upgrades don't break mid-flight.
+  // unification, skills/ is a top-level sibling of cli/.
   const self = realpathSync(import.meta.url.replace(/^file:\/\//, ""));
   const repoRoot = resolve(dirname(self), "..", "..");
   const newLayout = resolve(repoRoot, "skills");
   const oldLayout = resolve(dirname(self), "..", "skills");
-  if (existsSync(newLayout)) return newLayout;
+  // Pre-unify installs that haven't pulled yet still have cli/skills/ and
+  // nothing at root. Keep the fallback so a one-off `ae list` on an old
+  // checkout doesn't look empty.
+  if (existsSync(newLayout)) {
+    // Post-unify: sweep the stale cli/skills/ if it's still there as leftover.
+    if (existsSync(oldLayout)) {
+      try { rmSync(oldLayout, { recursive: true, force: true }); } catch {}
+    }
+    return newLayout;
+  }
   return oldLayout;
 }
 
