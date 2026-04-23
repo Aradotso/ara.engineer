@@ -12,18 +12,20 @@ import { registerResendTools } from "./tools/resend.js";
 import { registerEngainTools } from "./tools/engain.js";
 import { registerLinqTools } from "./tools/linq.js";
 import { registerPostizTools } from "./tools/postiz.js";
+import { registerBraintrustTools } from "./tools/braintrust.js";
+import { registerAxiomTools } from "./tools/axiom.js";
 import { registerPrompts } from "./prompts/index.js";
 
 const PORT = Number(process.env.PORT) || 3000;
 
-// MCP paths — Claude.ai sends requests to "/" while direct connections use "/mcp"
+// MCP paths — some clients (e.g. claude.ai) send requests to "/" while
+// direct connections and most CLIs use "/mcp". We serve both.
 const MCP_PATHS = new Set(["/", "/mcp"]);
 
 // ─── Server instructions shown to every agent on session init ───
-// This is the "CLAUDE.md" of the connector. It is sent to the model as the
-// system message for any tool-using agent that connects (Claude Desktop,
-// Claude Code sandboxes, the Claude API, etc.). Keep it skimmable — agents
-// will waste time exploring the filesystem otherwise.
+// Sent as the system message to any MCP-speaking agent that connects
+// (ChatGPT custom connectors, Codex CLI, Claude Desktop/Code, etc.).
+// Keep it skimmable — agents waste time exploring the filesystem otherwise.
 const ARA_INSTRUCTIONS = `# Ara Connectors
 
 You have direct access to Ara's internal tools via MCP. For Railway and
@@ -53,7 +55,7 @@ value isn't in any Railway service, THEN ask the user.
 
 ## Tools available
 
-- **Railway** (40+ \`railway_*\` tools) — projects, services, deployments,
+- **Railway** (60 \`railway_*\` tools) — projects, services, deployments,
   variables, domains, volumes, logs, metrics. Replaces the Railway CLI
   entirely (the CLI needs interactive auth that cloud agents can't do).
 - **Resend** (\`send_email\`, \`list_emails\`, \`get_email\`) — default from
@@ -64,6 +66,9 @@ value isn't in any Railway service, THEN ask the user.
 - **Engain** (\`engain_*\`) — leads / outbound.
 - **Linq** (\`linq_*\`) — messaging.
 - **Postiz** (\`postiz_*\`) — social scheduling.
+- **Braintrust** (\`braintrust_*\`) — eval experiments, trace logs, datasets, prompts.
+- **Axiom** (\`axiom_query\`, \`axiom_tail_logs\`, \`axiom_list_datasets\`) — Ara logs
+  (\`logs\` dataset). Use \`axiom_tail_logs\` for ad-hoc debugging.
 
 Call \`tools/list\` for full schemas.
 
@@ -79,8 +84,8 @@ If you're in a repo (e.g. an Aradotso/Ara cloud agent), do your normal
 SWE work — just use these tools instead of the \`railway\` CLI, instead
 of writing code to hit these APIs, and instead of asking for keys.
 
-If you're standalone (Claude Desktop, Cowork, no repo), the tools above
-are likely why the user invoked you.
+If you're standalone (no repo, e.g. a desktop chat client), the tools
+above are likely why the user invoked you.
 
 Either way: call tools directly without asking permission for reads;
 confirm before destructive writes (deletes, prod redeploys, sending
@@ -141,6 +146,8 @@ function createMcpSession(): { server: McpServer; transport: StreamableHTTPServe
   registerEngainTools(server);
   registerLinqTools(server);
   registerPostizTools(server);
+  registerBraintrustTools(server);
+  registerAxiomTools(server);
   registerPrompts(server);
 
   const transport = new StreamableHTTPServerTransport({
