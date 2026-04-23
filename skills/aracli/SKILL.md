@@ -16,11 +16,6 @@ triggers:
 
 # aracli — the CLI and its skill pipeline
 
-> ✅ **ONBOARDING TEST — 2026-04-23T23:00Z** — verifying teammate flow end-to-end.
-> If you can see this line and the marker timestamp matches what Adi pushed,
-> the sync pipeline is working on your machine. This block will be removed
-> shortly.
-
 `aracli` is the Ara engineer CLI (`~/github/ara.engineer/cli/`). It used to
 be named `ae`, which still works as an alias pointing at the same binary.
 One of its jobs is to auto-distribute a shared pool of Claude Code skills
