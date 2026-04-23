@@ -16,7 +16,7 @@ triggers:
 
 # aracli — the CLI and its skill pipeline
 
-> 🧪 **LAZY-PULL TEST — 2026-04-23T23:10Z** — checking whether a teammate's
+> 🧪 **LAZY-PULL TEST — 2026-04-23T23:15Z-TRUE-LAZY** — checking whether a teammate's
 > Cursor picks up pushed changes without them running `aracli update` first.
 
 `aracli` is the Ara engineer CLI (`~/github/ara.engineer/cli/`). It used to
