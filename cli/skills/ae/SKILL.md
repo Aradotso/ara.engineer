@@ -1,412 +1,266 @@
 ---
 name: ae
 description: |
-  Complete guide to cmux — AI-native terminal multiplexer. Covers topology control (windows/workspaces/panes/surfaces), terminal splits, browser automation (WKWebView, Playwright-style API), markdown viewer, sidebar status/progress, notifications, and multi-agent team coordination.
+  Meta-guide to the ae CLI and its skill-sharing pipeline. Covers how ae ships Claude Code skills to every teammate automatically — first-run bootstrap, live symlinks, PreToolUse/Skill hook, SessionStart hook. Use whenever you need to author a new skill, edit an existing skill, or reason about why a skill change did (or didn't) reach another user.
 triggers:
-  - "use cmux"
-  - "open a split"
-  - "cmux browser"
-  - "browser automation"
-  - "agent workspace"
-  - "parallel splits"
-  - "cmux send command"
-  - "set status"
-  - "set progress"
-  - "markdown viewer"
-  - "agent teams"
-  - "claude teams"
+  - "create a new skill"
+  - "add an ae skill"
+  - "new ae skill"
+  - "how do skills ship"
+  - "share this with the team"
+  - "auto-share with teammates"
+  - "how does ae update work"
+  - "how does /<skill> get to other users"
+  - "ship this skill"
 ---
 
-# cmux
+# ae — the CLI and its skill pipeline
 
-cmux is a macOS terminal multiplexer with a programmable CLI/socket API built for AI coding agents. It provides terminal splits, an embedded WKWebView browser with a Playwright-style API, sidebar status/progress reporting, notifications, and multi-agent team coordination.
+`ae` is the Ara engineer CLI (`~/github/ae/cli/`). One of its jobs is to
+auto-distribute a shared pool of Claude Code skills across every teammate
+who has `ae` installed. Edit a skill here, push to main, every teammate's
+Claude Code picks up the change — usually without even restarting their
+session.
 
----
-
-## Orient Yourself First
-
-```bash
-cmux identify --json        # who/where am I? returns window/workspace/pane/surface refs
-cmux list-windows
-cmux list-workspaces
-cmux list-panes
-cmux list-pane-surfaces --pane pane:1
-```
-
-Env vars auto-set in every cmux terminal:
-- `$CMUX_SURFACE_ID` — current surface ref
-- `$CMUX_WORKSPACE_ID` — current workspace ref
-
-**Handle model:** short refs everywhere — `window:N`, `workspace:N`, `pane:N`, `surface:N`. UUIDs accepted as input; only request UUID output when needed (`--id-format uuids|both`).
+For cmux (the terminal multiplexer) specifically, see `/cmux-terminal-multiplexer`.
+For the narrower cmux surfaces, see `/cmux`, `/cmux-browser`, `/cmux-markdown`,
+`/cmux-debug-windows`.
 
 ---
 
-## Topology
+## The pipeline at a glance
 
-```bash
-# Workspaces (tabs)
-cmux new-workspace --name "feat/x"
-cmux workspace-action --action rename --workspace workspace:2 --title "build"
-
-# Splits
-cmux --json new-split right    # side-by-side (preferred for parallel work)
-cmux --json new-split down     # stacked (good for logs)
-
-# Surface management
-cmux focus-pane --pane pane:2
-cmux move-surface --surface surface:7 --pane pane:2 --focus true
-cmux reorder-surface --surface surface:7 --before surface:3
-cmux close-surface --surface surface:7
-cmux swap-pane --pane pane:1 --target-pane pane:2
-
-# Attention cue
-cmux trigger-flash --surface surface:7
 ```
+  you: edit cli/skills/<name>/SKILL.md  →  git push origin main
+                           │
+                           ▼
+  teammate's laptop:
+    background fetch (≤30s cadence)    →  ~/.ae/behind = N
+    PreToolUse/Skill hook fires        →  ae tick     →  if behind>0, detached `ae update`
+    next /<name> invocation            →  reads the file via live symlink
+                                              ~/.claude/skills/<name>  →  <repo>/cli/skills/<name>
+    → teammate gets the new content, no new session needed
+```
+
+On every new Claude Code session start, a `SessionStart` hook also runs
+`ae update`, so sessions always begin with the latest pull.
+
+Kill switches (for advanced/emergency use):
+
+- `AE_NO_HOOK_INSTALL=1` — skip writing hooks into `~/.claude/settings.json`.
+- `AE_NO_TICK=1` — make `ae tick` a no-op.
+- `AE_NO_SKILLS_SYNC=1` — skip the `~/.claude/skills/` symlink sync.
+- `AE_NO_AUTO_UPDATE=1` — skip the auto-pull on ae invocations.
 
 ---
 
-## Terminal Splits
+## How a skill is discovered
 
-### Capture the ref immediately
+Every skill lives at:
 
-```bash
-WORKER=$(cmux --json new-split right | python3 -c "import sys,json; print(json.load(sys.stdin)['surface_ref'])")
+```
+~/github/ae/cli/skills/<name>/SKILL.md    # required
+~/github/ae/cli/skills/<name>/...         # optional references, scripts, templates
 ```
 
-### Send commands and read output
+On first `ae` run (and every `ae update` after), `ae skills sync` creates:
 
-```bash
-cmux send-surface --surface "$WORKER" "npm run build\n"   # \n to execute
-cmux send-key-surface --surface "$WORKER" ctrl-c
-cmux send-key-surface --surface "$WORKER" enter
-cmux capture-pane --surface "$WORKER"              # current screen
-cmux capture-pane --surface "$WORKER" --scrollback # full history
+```
+~/.claude/skills/<name>  →  ~/github/ae/cli/skills/<name>   (symlink)
 ```
 
-**Never steal focus** — always use `--surface` targeting.
-
-### Worker split pattern
-
-```bash
-WORKER=$(cmux --json new-split right | python3 -c "import sys,json; print(json.load(sys.stdin)['surface_ref'])")
-cmux send-surface --surface "$WORKER" "make test 2>&1; echo EXIT_CODE=\$?\n"
-sleep 3
-cmux capture-pane --surface "$WORKER"
-cmux close-surface --surface "$WORKER"
-```
+Claude Code scans `~/.claude/skills/` at session start, reads each
+`SKILL.md`, registers a slash command named after the `name:` in
+frontmatter. That's why symlinks are the right primitive — editing the
+file via `git pull` mutates what CC reads through the symlink, live.
 
 ---
 
-## Browser Automation
+## Authoring a new skill
 
-Browser engine: **WKWebView** (Apple-native, Playwright-style API ported from `vercel-labs/agent-browser`). No external Chrome required.
+Create the directory under `cli/skills/`, write a `SKILL.md`, commit, push.
+That's it — it's in teammates' hands by the time they start their next CC
+session.
 
-### Stable loop
+### 1. Pick a name
+
+The directory name is the slash command. Keep it lowercase, short,
+hyphen-separated: `sauce`, `health`, `axiom`, `cmux-browser`.
+
+### 2. Write SKILL.md
+
+Required frontmatter:
+
+```markdown
+---
+name: <slug>                         # must match the dir name
+description: |
+  One to two sentences. Appears in the slash-command autocomplete AND
+  gets injected into the LLM's system reminder at session start, so
+  this is the single most important hint for WHEN to invoke the skill.
+version: 1.0.0                       # optional but conventional
+allowed-tools:                       # optional; restricts what the skill can use
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Agent
+triggers:                            # optional; natural-language phrases that should fire it
+  - "do thing X"
+  - "when I say X, do X"
+---
+```
+
+Body (everything below `---`):
+
+- Lead with a one-paragraph plain-English explanation of what the skill
+  does and when to use it.
+- Then the operational recipes: commands, code snippets, examples.
+- Then common patterns + a quick-reference table at the bottom.
+- Keep it copy-pasteable. The LLM reads this verbatim — ambiguity becomes
+  behavior.
+
+### 3. (Optional) Ship references alongside
+
+Extra files live next to `SKILL.md` and are available to the LLM when it
+invokes the skill:
 
 ```
-navigate → get url → wait for load → snapshot --interactive → act with refs → re-snapshot
+cli/skills/<name>/SKILL.md
+cli/skills/<name>/references/*.md
+cli/skills/<name>/scripts/*.sh
+cli/skills/<name>/templates/*.tsx
 ```
 
-### Open and navigate
+The SKILL.md should reference these by relative path.
+
+### 4. Commit + push
 
 ```bash
-BROWSER=$(cmux --json browser open https://example.com | python3 -c "import sys,json; print(json.load(sys.stdin)['surface_ref'])")
-cmux browser $BROWSER get url
-cmux browser $BROWSER goto https://other.com
-cmux browser $BROWSER back
-cmux browser $BROWSER forward
-cmux browser $BROWSER reload
-cmux browser $BROWSER get title
+cd ~/github/ae
+git add cli/skills/<name>
+git commit -m "skill(<name>): <one-line>"
+git push origin main
 ```
 
-### Snapshot and element refs
+Teammates receive it on their next Claude Code session start (or within
+~30s of their next `ae` invocation if they're already in a session).
 
-Snapshot returns stable element refs (`e1`, `e2`, ...) instead of CSS selectors. Refs go stale after DOM mutations — always re-snapshot after navigation or clicks.
+### 5. Verify locally
 
 ```bash
-cmux browser $BROWSER wait --load-state complete --timeout-ms 15000
-cmux browser $BROWSER snapshot --interactive
-cmux browser $BROWSER snapshot --interactive --compact
-cmux browser $BROWSER snapshot --selector "form#login" --interactive  # scoped
-
-# Auto re-snapshot after action
-cmux --json browser $BROWSER click e2 --snapshot-after
+ae skills status                   # see every skill + link state
+ae skills sync                     # re-link (idempotent)
 ```
 
-### Interact
-
-```bash
-# Click
-cmux browser $BROWSER click e1
-cmux browser $BROWSER dblclick e2
-cmux browser $BROWSER hover e3
-cmux browser $BROWSER focus e4
-
-# Input
-cmux browser $BROWSER fill e5 "hello@example.com"   # clear + type
-cmux browser $BROWSER fill e5 ""                      # clear only
-cmux browser $BROWSER type e6 "search"                # type without clearing
-
-# Keys
-cmux browser $BROWSER press Enter
-cmux browser $BROWSER press Tab
-cmux browser $BROWSER keydown Shift
-
-# Forms
-cmux browser $BROWSER check e7
-cmux browser $BROWSER uncheck e7
-cmux browser $BROWSER select e8 "option-value"
-
-# Scroll
-cmux browser $BROWSER scroll --dy 500
-cmux browser $BROWSER scroll --selector ".container" --dy 300
-cmux browser $BROWSER scroll-into-view e9
-```
-
-### Wait
-
-```bash
-cmux browser $BROWSER wait --load-state complete --timeout-ms 15000
-cmux browser $BROWSER wait --selector "#ready" --timeout-ms 10000
-cmux browser $BROWSER wait --text "Success" --timeout-ms 10000
-cmux browser $BROWSER wait --url-contains "/dashboard" --timeout-ms 10000
-cmux browser $BROWSER wait --function "document.readyState === 'complete'" --timeout-ms 10000
-```
-
-### Read page content
-
-```bash
-cmux browser $BROWSER get text body
-cmux browser $BROWSER get html body
-cmux browser $BROWSER get value e5
-cmux browser $BROWSER get attr e9 --attr href
-cmux browser $BROWSER get count ".items"
-cmux browser $BROWSER get box e1           # bounding box
-cmux browser $BROWSER get styles e1 --property color
-
-cmux browser $BROWSER is visible "#modal"
-cmux browser $BROWSER is enabled "#submit"
-cmux browser $BROWSER is checked "#agree"
-```
-
-### Locators (Playwright-style)
-
-```bash
-cmux browser $BROWSER find role button
-cmux browser $BROWSER find text "Sign In"
-cmux browser $BROWSER find label "Email"
-cmux browser $BROWSER find placeholder "Enter email"
-cmux browser $BROWSER find testid "submit-btn"
-cmux browser $BROWSER find first ".item"
-cmux browser $BROWSER find nth ".item" 3
-```
-
-### JS evaluation
-
-```bash
-cmux browser $BROWSER eval "document.title"
-cmux browser $BROWSER eval "document.querySelectorAll('.item').length"
-cmux browser $BROWSER eval "window.scrollTo(0, document.body.scrollHeight)"
-```
-
-### Frames, dialogs, tabs
-
-```bash
-cmux browser $BROWSER frame "#iframe-selector"
-cmux browser $BROWSER frame main
-cmux browser $BROWSER dialog accept
-cmux browser $BROWSER dialog dismiss "prompt text"
-cmux browser $BROWSER tab new
-cmux browser $BROWSER tab list
-cmux browser $BROWSER tab 2
-```
-
-### Cookies, storage, state
-
-```bash
-cmux browser $BROWSER cookies get
-cmux browser $BROWSER cookies set session_token "abc123"
-cmux browser $BROWSER cookies clear
-cmux browser $BROWSER storage local get
-cmux browser $BROWSER storage local set myKey "myValue"
-cmux browser $BROWSER storage session clear
-
-# Save/restore full session (cookies + storage + tabs)
-cmux browser $BROWSER state save ./auth-state.json
-cmux browser $BROWSER state load ./auth-state.json
-```
-
-### Authentication pattern
-
-```bash
-BROWSER=$(cmux --json browser open https://app.example.com/login | python3 -c "import sys,json; print(json.load(sys.stdin)['surface_ref'])")
-cmux browser $BROWSER wait --load-state complete --timeout-ms 15000
-cmux browser $BROWSER snapshot --interactive
-cmux browser $BROWSER fill e1 "user@example.com"
-cmux browser $BROWSER fill e2 "my-password"
-cmux --json browser $BROWSER click e3 --snapshot-after
-cmux browser $BROWSER wait --url-contains "/dashboard" --timeout-ms 20000
-cmux browser $BROWSER state save ./auth-state.json
-```
-
-### Script injection and diagnostics
-
-```bash
-cmux browser $BROWSER addscript "console.log('injected')"
-cmux browser $BROWSER addstyle "body { background: red; }"
-cmux browser $BROWSER addinitscript "window.__injected = true"
-cmux browser $BROWSER screenshot
-cmux browser $BROWSER console list
-cmux browser $BROWSER errors list
-cmux browser $BROWSER highlight e1
-```
-
-### WKWebView limits (not supported)
-
-These return `not_supported` — no CDP in WKWebView:
-- viewport/device emulation
-- offline emulation
-- trace/screencast recording
-- network route interception/mocking
-- low-level raw input injection
-
-Fall back to `get text body` / `get html body` when `snapshot --interactive` returns `js_error`.
+Then pop a new Claude Code session and type `/<name>` — it should show up.
 
 ---
 
-## Markdown Viewer
+## Editing an existing skill
 
-Open a markdown file in a live-reload split panel alongside the terminal.
+Just edit the file in the repo and push. No re-linking needed — the
+teammate's symlink already points at your repo path, and `git pull`
+rewrites the file in place.
 
-```bash
-cmux markdown open plan.md
-cmux markdown open /path/to/PLAN.md
-cmux markdown open plan.md --workspace workspace:2
-cmux markdown open plan.md --surface surface:5
-```
+**Hot-reload semantics:**
 
-Panel auto-updates when the file changes on disk. Useful for agent plans, task lists, docs. Renders headings, code blocks, tables, lists, links, images (light + dark mode).
+| You changed | Takes effect without new CC session? |
+|---|---|
+| Body of an existing skill | ✅ Yes — next `/<name>` invocation reads fresh content |
+| `description` frontmatter | ⚠️ New text reaches the LLM next turn, but the slash-menu label was cached at session start |
+| `name` frontmatter | ❌ Rename = slash-menu entry only refreshes on new session |
+| Add a whole new skill dir | ❌ CC only scans `~/.claude/skills/` at session start |
+| Delete a skill dir | ❌ Slash menu stays stale until session restart (prune happens, but CC's list is cached) |
 
-**Pattern — write plan, then show it:**
-
-```bash
-cat > plan.md << 'EOF'
-# Plan
-1. Step one
-2. Step two
-EOF
-cmux markdown open plan.md
-# Panel live-reloads as you append steps
-echo "3. Step three" >> plan.md
-```
+Rule of thumb: content changes are live, catalog changes need a new session.
 
 ---
 
-## Sidebar Status, Progress, Logs, Notifications
+## Rules of thumb for LLMs authoring skills here
 
-Show live status without interrupting the user's flow.
-
-```bash
-# Status badge
-cmux set-status agent "working" --icon hammer --color "#ff9500"
-cmux set-status agent "done" --icon checkmark --color "#34c759"
-cmux clear-status agent
-
-# Progress bar
-cmux set-progress 0.33 --label "Building..."
-cmux set-progress 1.0 --label "Complete"
-cmux clear-progress
-
-# Log messages
-cmux log "Starting build"
-cmux log --level success "All tests passed"
-cmux log --level error --source build "Compilation failed"
-
-# Notifications
-cmux notify --title "Task Complete" --body "All tests passing"
-cmux notify --title "Need Input" --subtitle "Approval" --body "Approve deployment?"
-```
+- **One skill = one responsibility.** If a skill's description has "and"
+  in it more than twice, split it.
+- **Trigger list is a gift, not a contract.** It biases the LLM toward
+  invoking the skill on matching phrases, but the actual routing is done
+  by the `description`. A great `description` obsoletes most triggers.
+- **Lead with the use-case, not the API.** "When the user asks X, do
+  Y." Then recipes. Then reference.
+- **Copy-paste, don't paraphrase.** Commands in `SKILL.md` run verbatim —
+  don't add `# placeholder` comments where the LLM has to fill in.
+- **Never put secrets in SKILL.md.** The file is public on the ae repo.
+- **Don't duplicate other skills.** Before adding X, check
+  `ae skills status` / the repo's `cli/skills/`. Cross-link via
+  `/other-skill` instead of copying content.
 
 ---
 
-## Multi-Agent Teams
+## The ae CLI itself
 
-Coordinate parallel subagents with cmux splits so all work is visible to the user.
+Quick tour of the commands skill authors touch most:
 
-### Pattern
+| Command | What it does |
+|---|---|
+| `ae skills sync` | Re-link `cli/skills/*` into `~/.claude/skills/*` |
+| `ae skills status` | Per-skill: linked / preserved / broken / missing |
+| `ae update` | `git pull` + reinstall + relink shims + sync skills |
+| `ae update --check` | Just report behind-count, no writes |
+| `ae tick` | Fast silent refresh, used by the PreToolUse/Skill hook |
+| `ae list` | Enumerate every discoverable skill |
+| `ae show <id>` | Print a skill's SKILL.md |
+| `ae <id>` | Same as `ae show <id>` |
 
-1. Create splits for each teammate before spawning
-2. Pass each agent its surface ref in the prompt
-3. Agents run commands via `cmux send-surface`, report via `cmux set-status` / `cmux log`
-4. Coordinate via SendMessage — not by reading each other's terminal output
-5. Clean up with `cmux close-surface` when done
-
-```bash
-BUILD=$(cmux --json new-split right | python3 -c "import sys,json; print(json.load(sys.stdin)['surface_ref'])")
-TEST=$(cmux --json new-split down  | python3 -c "import sys,json; print(json.load(sys.stdin)['surface_ref'])")
-DOCS=$(cmux --json browser open https://docs.example.com | python3 -c "import sys,json; print(json.load(sys.stdin)['surface_ref'])")
-```
-
-Teammate prompt template:
-```
-You have cmux surface $BUILD.
-Run:    cmux send-surface --surface $BUILD "command\n"
-Read:   cmux capture-pane --surface $BUILD
-Status: cmux set-status build "working" --icon hammer
-Log:    cmux log "message"
-Never steal focus — always use --surface targeting.
-```
-
-**Rules:**
-- Never spawn `claude -p` directly in splits — use the Agent tool
-- Create all splits before spawning teammates
-- One split per teammate
-- Always clean up surfaces when done
+Non-skill commands worth knowing when authoring skills that interact
+with the broader ae flow: `ae wt` (worktree + cmux), `ae status`,
+`ae pr`, `ae prr`, `ae poll`.
 
 ---
 
-## Status-Driven Long Task Pattern
+## Debugging "my skill didn't reach the team"
 
-```bash
-cmux set-status task "starting" --icon clock --color "#ff9500"
-cmux set-progress 0.0 --label "Initializing..."
-# step 1
-cmux set-progress 0.33 --label "Building..."
-# step 2
-cmux set-progress 0.66 --label "Testing..."
-# step 3
-cmux set-progress 1.0 --label "Done"
-cmux set-status task "complete" --icon checkmark --color "#34c759"
-cmux clear-progress
-cmux notify --title "Task complete" --body "All steps passed"
-```
+If a teammate reports `/<name>` isn't showing up, walk through:
+
+1. **Did the push land?** `git log origin/main --oneline -5` on your machine.
+2. **Is their `ae` current?** Have them run `ae update --check`. If it
+   says "N commits behind", they haven't auto-pulled yet — `ae update`
+   fixes.
+3. **Is the symlink there?** Have them run `ae skills status`. Look for
+   `<name>  linked`. If it's `missing`, run `ae skills sync`.
+4. **Is their session pre-push?** Catalog changes need a fresh CC session.
+   Body changes don't. Have them start a new session.
+5. **Did they opt out?** Check for `AE_NO_*` env vars in their shell.
 
 ---
 
-## Quick Reference
+## Reference: frontmatter parser
 
-| Task | Command |
-|------|---------|
-| Where am I? | `cmux identify --json` |
-| Split right | `cmux --json new-split right` |
-| Split down | `cmux --json new-split down` |
-| Send command | `cmux send-surface --surface <ref> "cmd\n"` |
-| Read output | `cmux capture-pane --surface <ref>` |
-| Read full history | `cmux capture-pane --surface <ref> --scrollback` |
-| Close surface | `cmux close-surface --surface <ref>` |
-| Flash attention | `cmux trigger-flash --surface <ref>` |
-| Open browser | `cmux --json browser open <url>` |
-| Snapshot | `cmux browser <ref> snapshot --interactive` |
-| Click | `cmux browser <ref> click e1` |
-| Fill | `cmux browser <ref> fill e1 "text"` |
-| Wait load | `cmux browser <ref> wait --load-state complete --timeout-ms 15000` |
-| Read text | `cmux browser <ref> get text body` |
-| Eval JS | `cmux browser <ref> eval "expr"` |
-| Save auth | `cmux browser <ref> state save ./auth.json` |
-| Load auth | `cmux browser <ref> state load ./auth.json` |
-| Screenshot | `cmux browser <ref> screenshot` |
-| Open markdown | `cmux markdown open plan.md` |
-| Set status | `cmux set-status <key> "text" --icon <name>` |
-| Progress | `cmux set-progress 0.5 --label "Working..."` |
-| Log | `cmux log "message"` |
-| Notify | `cmux notify --title "T" --body "B"` |
+The ae CLI's own parser (`cli/src/skills.ts`) supports:
+
+- `key: value` — single-line
+- `key: |` or `key: >` + indented block — multi-line
+- Quoted values (`"..."` / `'...'`) — quotes stripped
+- `triggers:` / `allowed-tools:` as bulleted lists — parsed loosely, only
+  `name` / `description` / `version` are surfaced to the UI
+
+Claude Code itself has a similar-but-stricter parser; sticking to the
+shape shown in the template above works for both.
+
+---
+
+## TL;DR for instructing an LLM to add a skill
+
+> "Add an ae skill called `<name>`. Directory at
+> `~/github/ae/cli/skills/<name>/`. Write `SKILL.md` with:
+>
+> - `name: <name>` in frontmatter
+> - a `description:` that explains WHEN to invoke it (1-2 sentences)
+> - body: use-case intro → recipes → quick-reference table
+>
+> Commit as `skill(<name>): <one-liner>`, push to ae `origin/main`.
+> No other repo edits needed — the ae pipeline (`SessionStart` hook +
+> `PreToolUse/Skill` hook + live symlinks) distributes it to every
+> teammate within ~30s of their next ae command, visible as `/<name>`
+> on their next new Claude Code session (or immediately for body edits
+> to an existing skill)."
