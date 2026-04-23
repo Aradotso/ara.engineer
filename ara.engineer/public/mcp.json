@@ -1,0 +1,110 @@
+{
+  "$schema": "https://ara.engineer/mcp.schema.json",
+  "version": 1,
+  "updated": "2026-04-22",
+  "description": "Canonical catalog of MCP servers the Ara team uses. ae reads this to wire up Claude, Codex, and ChatGPT. The static directory page at /mcp also renders from this file.",
+  "ara_endpoint": {
+    "url": "https://connectors.ara.engineer/mcp",
+    "fallback_url": "https://ara-connectors-production.up.railway.app/mcp",
+    "auth": "oauth",
+    "description": "Ara's own managed MCP server — hosts connectors that don't have official MCPs or that need Ara-specific defaults baked in."
+  },
+  "servers": [
+    {
+      "id": "ara-connectors",
+      "name": "Ara Connectors",
+      "source": "ara",
+      "url": "https://connectors.ara.engineer/mcp",
+      "auth": "oauth",
+      "allowlist": "@ara.so Google accounts",
+      "tools": ["railway_*", "send_email", "list_emails", "get_email", "search_products", "search_stores", "create_cart", "check_order_status", "generate_video", "check_video_status", "edit_video", "blaxel_*", "engain_*", "linq_*", "postiz_*", "braintrust_*", "axiom_*"],
+      "summary": "Railway (60 tools) + Resend + Instacart + Higgsfield + Blaxel + Engain + Linq + Postiz + Braintrust + Axiom. Resend defaults to hello@ara.so. Railway is pre-loaded with Ara project IDs. Axiom pre-wired to the 'logs' dataset."
+    },
+    {
+      "id": "posthog",
+      "name": "PostHog",
+      "source": "official",
+      "url": "https://mcp.posthog.com/mcp",
+      "auth": "oauth",
+      "summary": "~200 tools. Insights, feature flags, experiments, dashboards, surveys, session recordings, error tracking, LLM analytics, HogQL."
+    },
+    {
+      "id": "linear",
+      "name": "Linear",
+      "source": "official",
+      "url": "https://mcp.linear.app/mcp",
+      "auth": "oauth",
+      "summary": "Issues, projects, cycles, initiatives, comments, documents."
+    },
+    {
+      "id": "stripe",
+      "name": "Stripe",
+      "source": "official",
+      "url": "https://mcp.stripe.com/",
+      "auth": "oauth",
+      "summary": "Customers, charges, subscriptions, products, invoices."
+    },
+    {
+      "id": "supabase",
+      "name": "Supabase",
+      "source": "official",
+      "url": "https://mcp.supabase.com/mcp",
+      "auth": "oauth",
+      "summary": "Projects, databases, edge functions, migrations, advisors, logs."
+    },
+    {
+      "id": "vercel",
+      "name": "Vercel",
+      "source": "official",
+      "url": "https://mcp.vercel.com/",
+      "auth": "oauth",
+      "summary": "Projects, deployments, domains, env vars, logs."
+    },
+    {
+      "id": "exa",
+      "name": "Exa",
+      "source": "official",
+      "url": "https://mcp.exa.ai/mcp",
+      "auth": "api-key-in-url",
+      "env": ["EXA_API_KEY"],
+      "summary": "Neural web search + content extraction."
+    },
+    {
+      "id": "hunter",
+      "name": "Hunter",
+      "source": "official",
+      "url": "https://mcp.hunter.io/mcp",
+      "auth": "oauth",
+      "summary": "Email finder, verifier, domain search, leads, campaigns."
+    },
+    {
+      "id": "gmail",
+      "name": "Gmail",
+      "source": "official",
+      "client_native": ["claude", "chatgpt"],
+      "summary": "Drafts, threads, labels. Use the native Google connector in each client."
+    },
+    {
+      "id": "google-calendar",
+      "name": "Google Calendar",
+      "source": "official",
+      "client_native": ["claude", "chatgpt"],
+      "summary": "Events, calendars, responses, scheduling."
+    },
+    {
+      "id": "google-drive",
+      "name": "Google Drive",
+      "source": "official",
+      "client_native": ["claude", "chatgpt"],
+      "summary": "Files, content, metadata, search."
+    },
+    {
+      "id": "slack",
+      "name": "Slack",
+      "source": "official",
+      "client_native": ["claude", "chatgpt"],
+      "summary": "Messages, channels, threads, canvas."
+    }
+  ],
+  "planned": []
+}

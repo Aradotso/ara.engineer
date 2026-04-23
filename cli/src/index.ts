@@ -12,6 +12,7 @@ import { updateCommand, maybeKickBackgroundCheck, maybeAutoUpdate, updateBanner 
 import { urlCommand } from "./commands/url.ts";
 import { skillsCommand } from "./commands/skills.ts";
 import { tickCommand } from "./commands/tick.ts";
+import { mcpCommand } from "./commands/mcp.ts";
 import { listSkills } from "./skills.ts";
 import { maybeBootstrapSkills } from "./skills-bootstrap.ts";
 import { SHIMS, shimPath } from "./shims.ts";
@@ -127,6 +128,11 @@ const coreCommands: NativeCommand[] = [
     name: "tick",
     summary: "Fast, silent refresh — wired as a Claude Code PreToolUse/Skill hook",
     run: tickCommand,
+  },
+  {
+    name: "mcp",
+    summary: "Manage MCP connectors: list | url | setup-codex | setup-claude | setup-chatgpt",
+    run: mcpCommand,
   },
 ];
 
