@@ -79,7 +79,7 @@ For each approved change:
 ## Step 4: Commit
 
 ```bash
-cd ~/github/ae
+cd ~/github/ara.engineer
 git add cli/
 git commit -m "improve: patch skills/cli from session learnings"
 git push origin main

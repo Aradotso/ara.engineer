@@ -60,14 +60,14 @@ Kill switches (for advanced/emergency use):
 Every skill lives at:
 
 ```
-~/github/ae/cli/skills/<name>/SKILL.md    # required
-~/github/ae/cli/skills/<name>/...         # optional references, scripts, templates
+~/github/ara.engineer/cli/skills/<name>/SKILL.md    # required
+~/github/ara.engineer/cli/skills/<name>/...         # optional references, scripts, templates
 ```
 
 On first `aracli` run (and every `aracli update` after), `aracli skills sync` creates:
 
 ```
-~/.claude/skills/<name>  →  ~/github/ae/cli/skills/<name>   (symlink)
+~/.claude/skills/<name>  →  ~/github/ara.engineer/cli/skills/<name>   (symlink)
 ```
 
 Claude Code scans `~/.claude/skills/` at session start, reads each
@@ -140,7 +140,7 @@ The SKILL.md should reference these by relative path.
 ### 4. Commit + push
 
 ```bash
-cd ~/github/ae
+cd ~/github/ara.engineer
 git add cli/skills/<name>
 git commit -m "skill(<name>): <one-line>"
 git push origin main
@@ -253,7 +253,7 @@ shape shown in the template above works for both.
 ## TL;DR for instructing an LLM to add a skill
 
 > "Add an ae skill called `<name>`. Directory at
-> `~/github/ae/cli/skills/<name>/`. Write `SKILL.md` with:
+> `~/github/ara.engineer/cli/skills/<name>/`. Write `SKILL.md` with:
 >
 > - `name: <name>` in frontmatter
 > - a `description:` that explains WHEN to invoke it (1-2 sentences)
