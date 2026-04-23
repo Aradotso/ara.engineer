@@ -34,7 +34,7 @@ CMD ["/bin/bash", "-euc", " \
     echo '[mcp] Infisical auth ok, running with /mcp secrets injected'; \
     exec infisical run \
       --projectId=6d518288-7854-49d2-aa42-8ffd285dafa1 \
-      --env=prod --path=/mcp --recursive --token \"$INFISICAL_TOKEN\" \
+      --env=\"${INFISICAL_ENV:-dev}\" --path=/mcp --recursive --token \"$INFISICAL_TOKEN\" \
       -- bun run src/index.ts; \
   else \
     echo '[mcp] INFISICAL_CLIENT_ID not set — starting without Infisical wrapper'; \
