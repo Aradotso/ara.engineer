@@ -1,8 +1,8 @@
-// ae sessions — list and clear Ara sandbox sessions via the local DEV API.
+// aracli sessions — list and clear Ara sandbox sessions via the local DEV API.
 //
 // Usage:
-//   ae sessions           list active sessions for the current worktree user
-//   ae sessions --clear   terminate all active sessions
+//   aracli sessions           list active sessions for the current worktree user
+//   aracli sessions --clear   terminate all active sessions
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -24,17 +24,17 @@ function getApiBase(): string {
 }
 
 async function getToken(): Promise<string | null> {
-  // Check for a CLI auth session token stored by `ae login` (future) or env
+  // Check for a CLI auth session token stored by `aracli login` (future) or env
   return process.env.ARA_TOKEN || null;
 }
 
 export async function sessionsCommand(argv: string[]): Promise<number> {
   if (argv.includes("-h") || argv.includes("--help")) {
-    console.log(`ae sessions — list and manage Ara sandbox sessions
+    console.log(`aracli sessions — list and manage Ara sandbox sessions
 
 Usage:
-  ae sessions           list active sessions
-  ae sessions --clear   terminate all active sessions
+  aracli sessions           list active sessions
+  aracli sessions --clear   terminate all active sessions
 
 Reads CLOUD_API_TARGET env or defaults to http://127.0.0.1:4000.
 Requires ARA_TOKEN env var (your Supabase JWT) for auth.
@@ -46,7 +46,7 @@ Requires ARA_TOKEN env var (your Supabase JWT) for auth.
   const token = await getToken();
 
   if (!token) {
-    console.error("ae sessions: ARA_TOKEN not set. Export your Supabase JWT:");
+    console.error("aracli sessions: ARA_TOKEN not set. Export your Supabase JWT:");
     console.error("  export ARA_TOKEN=$(curl -s ... | jq -r .access_token)");
     console.error("");
     console.error("Or log in with:  ae login  (coming soon)");
@@ -60,7 +60,7 @@ Requires ARA_TOKEN env var (your Supabase JWT) for auth.
   try {
     const resp = await fetch(`${apiBase}/session/status`, { headers, signal: AbortSignal.timeout(5000) });
     if (!resp.ok) {
-      console.error(`ae sessions: API returned ${resp.status} — is the backend running at ${apiBase}?`);
+      console.error(`aracli sessions: API returned ${resp.status} — is the backend running at ${apiBase}?`);
       return 1;
     }
     const data = await resp.json() as { session_id?: string; status?: string; server_url?: string };
@@ -90,7 +90,7 @@ Requires ARA_TOKEN env var (your Supabase JWT) for auth.
       }
     }
   } catch (err) {
-    console.error(`ae sessions: ${err instanceof Error ? err.message : err}`);
+    console.error(`aracli sessions: ${err instanceof Error ? err.message : err}`);
     console.error(`Is the backend running at ${apiBase}?`);
     return 1;
   }

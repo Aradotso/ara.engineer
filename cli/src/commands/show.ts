@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { findSkill, listSkills, closest } from "../skills.ts";
 
-// `ae <skill-id>` → print the skill's SKILL.md so an agent can load the
-// instructions. Also reachable as `ae show <id>`. Unknown ids produce a
+// `aracli <skill-id>` → print the skill's SKILL.md so an agent can load the
+// instructions. Also reachable as `aracli show <id>`. Unknown ids produce a
 // "did you mean" hint.
 
 export function showCommand(id: string, opts: { json?: boolean } = {}): number {
@@ -17,7 +17,7 @@ export function showCommand(id: string, opts: { json?: boolean } = {}): number {
       for (const h of hints) console.error(`  ae ${h}`);
     }
     console.error("");
-    console.error("See all skills:  ae list");
+    console.error("See all skills:  aracli list");
     return 1;
   }
 

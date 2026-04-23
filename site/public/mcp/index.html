@@ -99,9 +99,9 @@
       </p>
 
       <h2>Fastest path</h2>
-      <div class="cmd">curl -fsSL https://ara.engineer/install | sh && ae mcp setup-codex</div>
+      <div class="cmd">curl -fsSL https://ara.engineer/install | sh && aracli mcp setup-codex</div>
       <p style="color: var(--soft); font-size: 14px; margin-top: 10px;">
-        Installs the <code>ae</code> CLI, then writes every server below into <code>~/.codex/config.toml</code>.
+        Installs the <code>aracli</code> CLI, then writes every server below into <code>~/.codex/config.toml</code>.
         For Claude Desktop and ChatGPT, see the per-client sections further down.
       </p>
 
@@ -119,7 +119,7 @@
       <h2>Setup per client</h2>
 
       <h3>Codex CLI</h3>
-      <p style="color: var(--soft);">Run <code>ae mcp setup-codex</code> or paste into <code>~/.codex/config.toml</code>:</p>
+      <p style="color: var(--soft);">Run <code>aracli mcp setup-codex</code> or paste into <code>~/.codex/config.toml</code>:</p>
       <pre class="block" id="codex-config">loading…</pre>
 
       <h3>ChatGPT</h3>
@@ -132,7 +132,7 @@
       <h3>Claude (Desktop / Code / web)</h3>
       <ol class="steps">
         <li>Claude web: <strong>Settings → Connectors → Add custom connector</strong> → paste the URL.</li>
-        <li>Claude Desktop: <strong>Settings → Connectors → Add</strong>, or edit <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> via <code>ae mcp setup-claude</code>.</li>
+        <li>Claude Desktop: <strong>Settings → Connectors → Add</strong>, or edit <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> via <code>aracli mcp setup-claude</code>.</li>
         <li>Claude Code: edit <code>~/.claude.json</code> or run <code>claude mcp add</code>.</li>
       </ol>
 

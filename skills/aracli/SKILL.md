@@ -1,26 +1,27 @@
 ---
-name: ae
+name: aracli
 description: |
-  Meta-guide to the ae CLI and its skill-sharing pipeline. Covers how ae ships Claude Code skills to every teammate automatically — first-run bootstrap, live symlinks, PreToolUse/Skill hook, SessionStart hook. Use whenever you need to author a new skill, edit an existing skill, or reason about why a skill change did (or didn't) reach another user.
+  Meta-guide to the aracli CLI (formerly `ae`) and its skill-sharing pipeline. Covers how aracli ships Claude Code skills to every teammate automatically — first-run bootstrap, live symlinks, PreToolUse/Skill hook, SessionStart hook. Use whenever you need to author a new skill, edit an existing skill, or reason about why a skill change did (or didn't) reach another user.
 triggers:
   - "create a new skill"
-  - "add an ae skill"
-  - "new ae skill"
+  - "add an aracli skill"
+  - "new aracli skill"
   - "how do skills ship"
   - "share this with the team"
   - "auto-share with teammates"
-  - "how does ae update work"
+  - "how does aracli update work"
   - "how does /<skill> get to other users"
   - "ship this skill"
 ---
 
-# ae — the CLI and its skill pipeline
+# aracli — the CLI and its skill pipeline
 
-`ae` is the Ara engineer CLI (`~/github/ae/cli/`). One of its jobs is to
-auto-distribute a shared pool of Claude Code skills across every teammate
-who has `ae` installed. Edit a skill here, push to main, every teammate's
-Claude Code picks up the change — usually without even restarting their
-session.
+`aracli` is the Ara engineer CLI (`~/github/ara.engineer/cli/`). It used to
+be named `ae`, which still works as an alias pointing at the same binary.
+One of its jobs is to auto-distribute a shared pool of Claude Code skills
+across every teammate who has `aracli` installed. Edit a skill here, push
+to main, every teammate's Claude Code picks up the change — usually without
+even restarting their session.
 
 For cmux (the terminal multiplexer) specifically, see `/cmux-terminal-multiplexer`.
 For the narrower cmux surfaces, see `/cmux`, `/cmux-browser`, `/cmux-markdown`,
@@ -36,19 +37,19 @@ For the narrower cmux surfaces, see `/cmux`, `/cmux-browser`, `/cmux-markdown`,
                            ▼
   teammate's laptop:
     background fetch (≤30s cadence)    →  ~/.ae/behind = N
-    PreToolUse/Skill hook fires        →  ae tick     →  if behind>0, detached `ae update`
+    PreToolUse/Skill hook fires        →  ae tick     →  if behind>0, detached `aracli update`
     next /<name> invocation            →  reads the file via live symlink
                                               ~/.claude/skills/<name>  →  <repo>/cli/skills/<name>
     → teammate gets the new content, no new session needed
 ```
 
 On every new Claude Code session start, a `SessionStart` hook also runs
-`ae update`, so sessions always begin with the latest pull.
+`aracli update`, so sessions always begin with the latest pull.
 
 Kill switches (for advanced/emergency use):
 
 - `AE_NO_HOOK_INSTALL=1` — skip writing hooks into `~/.claude/settings.json`.
-- `AE_NO_TICK=1` — make `ae tick` a no-op.
+- `AE_NO_TICK=1` — make `aracli tick` a no-op.
 - `AE_NO_SKILLS_SYNC=1` — skip the `~/.claude/skills/` symlink sync.
 - `AE_NO_AUTO_UPDATE=1` — skip the auto-pull on ae invocations.
 
@@ -63,7 +64,7 @@ Every skill lives at:
 ~/github/ae/cli/skills/<name>/...         # optional references, scripts, templates
 ```
 
-On first `ae` run (and every `ae update` after), `ae skills sync` creates:
+On first `aracli` run (and every `aracli update` after), `aracli skills sync` creates:
 
 ```
 ~/.claude/skills/<name>  →  ~/github/ae/cli/skills/<name>   (symlink)
@@ -192,7 +193,7 @@ Rule of thumb: content changes are live, catalog changes need a new session.
   don't add `# placeholder` comments where the LLM has to fill in.
 - **Never put secrets in SKILL.md.** The file is public on the ae repo.
 - **Don't duplicate other skills.** Before adding X, check
-  `ae skills status` / the repo's `cli/skills/`. Cross-link via
+  `aracli skills status` / the repo's `cli/skills/`. Cross-link via
   `/other-skill` instead of copying content.
 
 ---
@@ -203,17 +204,17 @@ Quick tour of the commands skill authors touch most:
 
 | Command | What it does |
 |---|---|
-| `ae skills sync` | Re-link `cli/skills/*` into `~/.claude/skills/*` |
-| `ae skills status` | Per-skill: linked / preserved / broken / missing |
-| `ae update` | `git pull` + reinstall + relink shims + sync skills |
-| `ae update --check` | Just report behind-count, no writes |
-| `ae tick` | Fast silent refresh, used by the PreToolUse/Skill hook |
-| `ae list` | Enumerate every discoverable skill |
+| `aracli skills sync` | Re-link `cli/skills/*` into `~/.claude/skills/*` |
+| `aracli skills status` | Per-skill: linked / preserved / broken / missing |
+| `aracli update` | `git pull` + reinstall + relink shims + sync skills |
+| `aracli update --check` | Just report behind-count, no writes |
+| `aracli tick` | Fast silent refresh, used by the PreToolUse/Skill hook |
+| `aracli list` | Enumerate every discoverable skill |
 | `ae show <id>` | Print a skill's SKILL.md |
 | `ae <id>` | Same as `ae show <id>` |
 
 Non-skill commands worth knowing when authoring skills that interact
-with the broader ae flow: `ae wt` (worktree + cmux), `ae status`,
+with the broader ae flow: `aracli wt` (worktree + cmux), `aracli status`,
 `ae pr`, `ae prr`, `ae poll`.
 
 ---
@@ -223,11 +224,11 @@ with the broader ae flow: `ae wt` (worktree + cmux), `ae status`,
 If a teammate reports `/<name>` isn't showing up, walk through:
 
 1. **Did the push land?** `git log origin/main --oneline -5` on your machine.
-2. **Is their `ae` current?** Have them run `ae update --check`. If it
-   says "N commits behind", they haven't auto-pulled yet — `ae update`
+2. **Is their `aracli` current?** Have them run `aracli update --check`. If it
+   says "N commits behind", they haven't auto-pulled yet — `aracli update`
    fixes.
-3. **Is the symlink there?** Have them run `ae skills status`. Look for
-   `<name>  linked`. If it's `missing`, run `ae skills sync`.
+3. **Is the symlink there?** Have them run `aracli skills status`. Look for
+   `<name>  linked`. If it's `missing`, run `aracli skills sync`.
 4. **Is their session pre-push?** Catalog changes need a fresh CC session.
    Body changes don't. Have them start a new session.
 5. **Did they opt out?** Check for `AE_NO_*` env vars in their shell.

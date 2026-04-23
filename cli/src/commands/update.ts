@@ -1,4 +1,4 @@
-// `ae update` — pull latest from origin, reinstall bun deps, re-link all
+// `aracli update` — pull latest from origin, reinstall bun deps, re-link all
 // shims. Works against the repo that backs the currently-installed `ae`
 // binary (resolved via the symlink at $(which ae)).
 
@@ -82,12 +82,12 @@ function binDir(): string {
 export async function updateCommand(argv: string[]): Promise<number> {
   const args = parseArgs(argv);
   if (args.help) {
-    console.log(`ae update — pull latest, reinstall deps, relink shims
+    console.log(`aracli update — pull latest, reinstall deps, relink shims
 
 Usage:
-  ae update               pull + install + relink (refuses if repo is dirty)
-  ae update --check       report whether an update is available; no changes
-  ae update --force       pull even if the working tree has local changes
+  aracli update               pull + install + relink (refuses if repo is dirty)
+  aracli update --check       report whether an update is available; no changes
+  aracli update --force       pull even if the working tree has local changes
 
 This updates the repo at $(dirname $(readlink -f $(which ae)))/../..
 `);
@@ -96,7 +96,7 @@ This updates the repo at $(dirname $(readlink -f $(which ae)))/../..
 
   const repo = repoRoot();
   if (!existsSync(resolve(repo, ".git"))) {
-    console.error(`ae update: ${repo} is not a git checkout — can't self-update`);
+    console.error(`aracli update: ${repo} is not a git checkout — can't self-update`);
     return 1;
   }
 
@@ -106,7 +106,7 @@ This updates the repo at $(dirname $(readlink -f $(which ae)))/../..
     if (n === 0) {
       console.log("up to date");
     } else {
-      console.log(`${n} commit${n === 1 ? "" : "s"} behind origin/main — run \`ae update\``);
+      console.log(`${n} commit${n === 1 ? "" : "s"} behind origin/main — run \`aracli update\``);
     }
     writeCheckStamp(n);
     return 0;
@@ -115,7 +115,7 @@ This updates the repo at $(dirname $(readlink -f $(which ae)))/../..
   if (!args.force) {
     const unexpected = await unexpectedChanges(repo);
     if (unexpected.length > 0) {
-      console.error(`ae update: ${repo} has uncommitted changes — refusing to pull.`);
+      console.error(`aracli update: ${repo} has uncommitted changes — refusing to pull.`);
       for (const p of unexpected.slice(0, 5)) console.error(`  modified: ${p}`);
       if (unexpected.length > 5) console.error(`  …and ${unexpected.length - 5} more`);
       console.error(`Commit/stash first, or rerun with --force to pull anyway.`);
@@ -162,7 +162,7 @@ This updates the repo at $(dirname $(readlink -f $(which ae)))/../..
   else console.log(`  up to date (${syncResult.alreadyLinked.length} linked)`);
 
   writeCheckStamp(0);
-  console.log(`\nUpdated. ae --version: ${await currentVersion(repo)}`);
+  console.log(`\nUpdated. aracli --version: ${await currentVersion(repo)}`);
   return 0;
 }
 
@@ -226,7 +226,7 @@ export function updateBanner(): string | null {
   try {
     const n = Number(readFileSync(BEHIND, "utf8").trim());
     if (Number.isFinite(n) && n > 0) {
-      return `↑ ae is ${n} commit${n === 1 ? "" : "s"} behind — run \`ae update\` to upgrade.`;
+      return `↑ ae is ${n} commit${n === 1 ? "" : "s"} behind — run \`aracli update\` to upgrade.`;
     }
   } catch {}
   return null;

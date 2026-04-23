@@ -1,8 +1,8 @@
 // Idempotent installer for the Claude Code hooks that make ae's skill-updates
 // feel live:
 //
-//   SessionStart        → `ae update`    (once per session, pulls + syncs)
-//   PreToolUse / Skill  → `ae tick`      (fast, kicks bg refresh every time a
+//   SessionStart        → `aracli update`    (once per session, pulls + syncs)
+//   PreToolUse / Skill  → `aracli tick`      (fast, kicks bg refresh every time a
 //                                          slash-command skill is invoked)
 //
 // We merge into the user's ~/.claude/settings.json without touching anything
@@ -15,8 +15,8 @@ import { homedir } from "node:os";
 
 // These exact strings are what we scan for when deciding "already installed".
 // Keep them stable — renaming is a breaking change for existing users.
-const HOOK_UPDATE_CMD = "ae update >/dev/null 2>&1 || true";
-const HOOK_TICK_CMD = "ae tick >/dev/null 2>&1 || true";
+const HOOK_UPDATE_CMD = "aracli update >/dev/null 2>&1 || true";
+const HOOK_TICK_CMD = "aracli tick >/dev/null 2>&1 || true";
 
 type SettingsFile = {
   hooks?: {
@@ -82,8 +82,8 @@ export function ensureHooksInstalled(): HookInstallResult {
   const settings = readSettings(path);
   settings.hooks = (settings.hooks ?? {}) as NonNullable<SettingsFile["hooks"]>;
 
-  // SessionStart: `ae update`
-  if (hasCommand(settings.hooks.SessionStart, "ae update")) {
+  // SessionStart: `aracli update`
+  if (hasCommand(settings.hooks.SessionStart, "aracli update")) {
     result.alreadyPresent.push("SessionStart:ae-update");
   } else {
     settings.hooks.SessionStart = addGroup(
@@ -93,10 +93,10 @@ export function ensureHooksInstalled(): HookInstallResult {
     result.installed.push("SessionStart:ae-update");
   }
 
-  // PreToolUse / Skill: `ae tick`
+  // PreToolUse / Skill: `aracli tick`
   const pre = (settings.hooks.PreToolUse as Array<{ matcher?: string; hooks?: Array<{ command?: string }> }> | undefined) ?? [];
   const skillGroups = pre.filter((g) => (g.matcher ?? "") === "Skill");
-  if (hasCommand(skillGroups, "ae tick")) {
+  if (hasCommand(skillGroups, "aracli tick")) {
     result.alreadyPresent.push("PreToolUse/Skill:ae-tick");
   } else {
     settings.hooks.PreToolUse = addGroup(

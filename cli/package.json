@@ -1,16 +1,17 @@
 {
-  "name": "ae",
-  "version": "0.2.0",
+  "name": "aracli",
+  "version": "0.3.0",
   "private": false,
-  "description": "Ara engineer CLI — skills, worktrees, dev env. The new home of astack.",
+  "description": "Ara engineer CLI (aracli) — skills, worktrees, dev env. Also reachable as `ae` during the renaming window.",
   "type": "module",
   "bin": {
-    "ae": "./bin/ae"
+    "aracli": "./bin/aracli",
+    "ae": "./bin/aracli"
   },
   "scripts": {
     "dev": "bun run src/index.ts",
     "typecheck": "tsc --noEmit",
-    "build": "bun build src/index.ts --compile --outfile bin/ae-compiled"
+    "build": "bun build src/index.ts --compile --outfile bin/aracli-compiled"
   },
   "devDependencies": {
     "@types/bun": "latest",

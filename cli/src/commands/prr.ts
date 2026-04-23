@@ -1,9 +1,9 @@
-// ae prr — PR Review: read review comments on the current PR, fix them with Claude.
+// aracli prr — PR Review: read review comments on the current PR, fix them with Claude.
 //
 // Usage:
-//   ae prr              read comments on current branch's PR, auto-fix with claude
-//   ae prr --dry-run    print the fix prompt without running claude
-//   ae prr <number>     target a specific PR number
+//   aracli prr              read comments on current branch's PR, auto-fix with claude
+//   aracli prr --dry-run    print the fix prompt without running claude
+//   aracli prr <number>     target a specific PR number
 
 import { $ } from "bun";
 $.throws(false);
@@ -84,13 +84,13 @@ function buildFixPrompt(
 
 export async function prrCommand(argv: string[]): Promise<number> {
   if (argv.includes("-h") || argv.includes("--help")) {
-    console.log(`ae prr — fix review comments on the current PR using Claude
+    console.log(`aracli prr — fix review comments on the current PR using Claude
 
 Usage:
-  ae prr              fetch comments on current branch's PR, auto-fix
-  ae prr <number>     target a specific PR number
-  ae prr --dry-run    print the fix prompt without running claude
-  ae prr --print      same as --dry-run
+  aracli prr              fetch comments on current branch's PR, auto-fix
+  aracli prr <number>     target a specific PR number
+  aracli prr --dry-run    print the fix prompt without running claude
+  aracli prr --print      same as --dry-run
 `);
     return 0;
   }
@@ -102,7 +102,7 @@ Usage:
   if (!prNumber) {
     prNumber = await currentPrNumber();
     if (!prNumber) {
-      console.error("ae prr: not on a PR branch. Create one with `ae pr` or pass a PR number.");
+      console.error("aracli prr: not on a PR branch. Create one with `aracli pr` or pass a PR number.");
       return 1;
     }
   }

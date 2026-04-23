@@ -1,7 +1,7 @@
 // First-run skills sync. The first time `ae` runs on a machine (and once a
 // day thereafter) we silently link the repo's skills into ~/.claude/skills
 // so a fresh install is immediately useful — the user shouldn't have to run
-// `ae update` / `ae skills sync` just to get the skills.
+// `aracli update` / `aracli skills sync` just to get the skills.
 //
 // Keeps its own stamp so we don't walk the filesystem on every invocation.
 

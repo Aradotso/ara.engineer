@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# aracli — entry shim. Execs bun on the TypeScript CLI.
+# Resolves the real path so symlinks (e.g. ~/.bun/bin/aracli → repo) work.
+# Also reachable as `ae` — the legacy name, kept as a compat alias.
+set -e
+SELF="$(readlink "$0" 2>/dev/null || echo "$0")"
+if [[ "$SELF" != /* ]]; then
+  SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$SELF")"
+fi
+ARACLI_DIR="$(cd "$(dirname "$SELF")/.." && pwd)"
+exec bun "$ARACLI_DIR/src/index.ts" "$@"

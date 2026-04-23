@@ -1,12 +1,12 @@
-// ae status — dashboard of all agent worktrees: ports, URLs, PR state.
+// aracli status — dashboard of all agent worktrees: ports, URLs, PR state.
 //
 // Also auto-GCs any worktree whose PR has been merged (kills processes,
 // removes ngrok tunnels, prunes the git worktree + branch).
 //
 // Usage:
-//   ae status          show dashboard + auto-gc merged worktrees
-//   ae status --gc     same, but also prompt-confirm before each deletion
-//   ae status --no-gc  show only, skip gc
+//   aracli status          show dashboard + auto-gc merged worktrees
+//   aracli status --gc     same, but also prompt-confirm before each deletion
+//   aracli status --no-gc  show only, skip gc
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve, basename } from "node:path";
@@ -182,11 +182,11 @@ async function gcWorktree(wt: WorktreeInfo, repoRoot: string): Promise<void> {
 
 export async function statusCommand(argv: string[]): Promise<number> {
   if (argv.includes("-h") || argv.includes("--help")) {
-    console.log(`ae status — dashboard of all agent worktrees
+    console.log(`aracli status — dashboard of all agent worktrees
 
 Usage:
-  ae status          show all agents + auto-gc merged
-  ae status --no-gc  show only, skip cleanup
+  aracli status          show all agents + auto-gc merged
+  aracli status --no-gc  show only, skip cleanup
 
 Columns: agent · branch · app/mkt/api ports (●=up ○=down) · PR state
 `);
@@ -199,7 +199,7 @@ Columns: agent · branch · app/mkt/api ports (●=up ○=down) · PR state
   const wtRoot = resolve(repoRoot, ".worktrees");
 
   if (!existsSync(wtRoot)) {
-    console.log("No .worktrees/ directory found — run `ae wt <name>` to create one.");
+    console.log("No .worktrees/ directory found — run `aracli wt <name>` to create one.");
     return 0;
   }
 
@@ -212,7 +212,7 @@ Columns: agent · branch · app/mkt/api ports (●=up ○=down) · PR state
   await run(["git", "worktree", "prune"], repoRoot);
 
   if (agentWts.length === 0) {
-    console.log("No agent worktrees active. Run `ae wt <name>` to create one.");
+    console.log("No agent worktrees active. Run `aracli wt <name>` to create one.");
     return 0;
   }
 
@@ -321,7 +321,7 @@ Columns: agent · branch · app/mkt/api ports (●=up ○=down) · PR state
       if (prInfo) { const s = prInfo.state.toLowerCase(); prState = s === "merged" ? "merged" : s === "draft" ? "draft" : s === "open" ? "open" : "closed"; }
       return { path: w.path, name, branch: w.branch, agentN, tunnels, portAlive, gitStatus: dirty ? "dirty" : "clean", prNumber: prInfo?.number ?? null, prState, prUrl: prInfo?.url ?? "" } satisfies WorktreeInfo;
     }));
-    const lines: string[] = ["", `  \x1b[1mae status\x1b[0m  \x1b[2m(Ctrl-C to exit)\x1b[0m`, "  " + "─".repeat(80), `  \x1b[2m${"AGENT".padEnd(12)} ${"BRANCH".padEnd(30)} ${"APP".padEnd(6)} ${"MKT".padEnd(6)} ${"API".padEnd(6)} STATUS\x1b[0m`, "  " + "─".repeat(80)];
+    const lines: string[] = ["", `  \x1b[1maracli status\x1b[0m  \x1b[2m(Ctrl-C to exit)\x1b[0m`, "  " + "─".repeat(80), `  \x1b[2m${"AGENT".padEnd(12)} ${"BRANCH".padEnd(30)} ${"APP".padEnd(6)} ${"MKT".padEnd(6)} ${"API".padEnd(6)} STATUS\x1b[0m`, "  " + "─".repeat(80)];
     for (const wt of infos2) {
       const label = wt.agentN != null ? `agent-${wt.agentN}` : wt.name.slice(0, 12);
       const branch = wt.branch.length > 28 ? wt.branch.slice(0, 27) + "…" : wt.branch;

@@ -39,14 +39,14 @@ async function fetchCatalog(): Promise<Catalog> {
 }
 
 function printHelp() {
-  console.log(`ae mcp — manage MCP connectors for the Ara team
+  console.log(`aracli mcp — manage MCP connectors for the Ara team
 
 Usage:
-  ae mcp list [--json]              show the full catalog
-  ae mcp url <id>                   print a server's URL
-  ae mcp setup-codex [--write]      emit or write ~/.codex/config.toml
-  ae mcp setup-claude [--write]     emit or write ~/.claude.json (Claude Code / Desktop)
-  ae mcp setup-chatgpt              open ChatGPT's connector page + print step-by-step
+  aracli mcp list [--json]              show the full catalog
+  aracli mcp url <id>                   print a server's URL
+  aracli mcp setup-codex [--write]      emit or write ~/.codex/config.toml
+  aracli mcp setup-claude [--write]     emit or write ~/.claude.json (Claude Code / Desktop)
+  aracli mcp setup-chatgpt              open ChatGPT's connector page + print step-by-step
 
 Flags:
   --write    actually write the config file (default: print to stdout)
@@ -88,12 +88,12 @@ async function listSubcommand(args: string[]): Promise<number> {
 
 async function urlSubcommand(args: string[]): Promise<number> {
   const id = args[0];
-  if (!id) { console.error("ae mcp url: missing <id>"); return 2; }
+  if (!id) { console.error("aracli mcp url: missing <id>"); return 2; }
   try {
     const cat = await fetchCatalog();
     const s = cat.servers.find((x) => x.id === id);
-    if (!s) { console.error(`ae mcp url: no server with id '${id}'`); return 1; }
-    if (!s.url) { console.error(`ae mcp url: '${id}' has no URL (client-native)`); return 1; }
+    if (!s) { console.error(`aracli mcp url: no server with id '${id}'`); return 1; }
+    if (!s.url) { console.error(`aracli mcp url: '${id}' has no URL (client-native)`); return 1; }
     console.log(s.url);
     return 0;
   } catch (e: any) {
@@ -103,7 +103,7 @@ async function urlSubcommand(args: string[]): Promise<number> {
 }
 
 function toCodexToml(cat: Catalog): string {
-  let out = "# Written by `ae mcp setup-codex` — https://ara.engineer/mcp\n";
+  let out = "# Written by `aracli mcp setup-codex` — https://ara.engineer/mcp\n";
   out += `# Catalog version ${cat.version}, updated ${cat.updated}\n\n`;
   for (const s of cat.servers) {
     if (!s.url) continue;
@@ -134,7 +134,7 @@ async function setupCodex(args: string[]): Promise<number> {
   const toml = toCodexToml(cat);
   if (!write) {
     console.log(toml);
-    console.log(`\n# To apply: ae mcp setup-codex --write`);
+    console.log(`\n# To apply: aracli mcp setup-codex --write`);
     return 0;
   }
   const path = join(homedir(), ".codex", "config.toml");
@@ -164,7 +164,7 @@ async function setupClaude(args: string[]): Promise<number> {
   const config = toClaudeJson(cat);
   if (!write) {
     console.log(JSON.stringify(config, null, 2));
-    console.log(`\n// To apply: ae mcp setup-claude --write`);
+    console.log(`\n// To apply: aracli mcp setup-claude --write`);
     console.log(`// Merges into ~/.claude.json (Claude Code). For Claude Desktop, copy into ~/Library/Application Support/Claude/claude_desktop_config.json`);
     return 0;
   }
@@ -211,7 +211,7 @@ export async function mcpCommand(argv: string[]): Promise<number> {
     case "setup-claude": return await setupClaude(rest);
     case "setup-chatgpt": return await setupChatgpt(rest);
     default:
-      console.error(`ae mcp: unknown subcommand '${sub}'`);
+      console.error(`aracli mcp: unknown subcommand '${sub}'`);
       printHelp();
       return 2;
   }

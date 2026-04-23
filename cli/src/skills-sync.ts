@@ -1,6 +1,6 @@
 // Sync <repo>/cli/skills/* into ~/.claude/skills/* via symlinks so Claude
 // Code discovers every ae skill globally (anywhere on the user's machine,
-// not just inside this repo). Called by `ae update` and once on first
+// not just inside this repo). Called by `aracli update` and once on first
 // install so the user never has to think about it.
 //
 // Rules:
@@ -49,7 +49,7 @@ export function sourceSkillsDir(): string {
   const newLayout = resolve(repoRoot, "skills");
   const oldLayout = resolve(dirname(self), "..", "skills");
   // Pre-unify installs that haven't pulled yet still have cli/skills/ and
-  // nothing at root. Keep the fallback so a one-off `ae list` on an old
+  // nothing at root. Keep the fallback so a one-off `aracli list` on an old
   // checkout doesn't look empty.
   if (existsSync(newLayout)) {
     // Post-unify: sweep the stale cli/skills/ if it's still there as leftover.

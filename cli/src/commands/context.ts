@@ -102,7 +102,7 @@ axiom query "['logs'] | where runtime_session_id == 'sess-xxx' | sort by _time a
 
 ## Skills
 
-\`ae list\` — all available skills.
+\`aracli list\` — all available skills.
 Key ones: \`/ready\`, \`/pr\`, \`/push\`, \`/review\`, \`/test\`, \`/axiom\`, \`/health\`, \`/linear\`.
 `,
   );

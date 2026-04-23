@@ -349,7 +349,7 @@ bun demo.mjs
 - **DO NOT** use `showChapter()` for styling — use `showOverlay(html)` with custom Inter CSS for the Ara bottom pill style.
 - **Body file** — always write PR comment body to a file and use `--body-file`. Avoids shell escaping issues with backticks and special chars.
 
-## Timing reference (ae wt on M-series Mac)
+## Timing reference (aracli wt on M-series Mac)
 
 | Step | Time |
 |------|------|

@@ -18,13 +18,13 @@ Analyze the conversation, extract learnings, patch skills. Manually triggered at
 
 ## Source of truth
 
-All ae changes live in **`~/github/ae/`** — the GitHub repo. Never edit `~/.ae/` directly; that is a local install cache that gets overwritten on `ae update`.
+All aracli changes live in **`~/github/ara.engineer/`** — the GitHub repo. Never edit `~/.aracli/` directly; that is a local install cache that gets overwritten on `aracli update`.
 
 | What to change | Where to edit |
 |----------------|---------------|
-| Skills (`/demo`, `/ready`, etc.) | `~/github/ae/cli/skills/<name>/SKILL.md` |
-| CLI commands (`ae url`, `ae pr`, etc.) | `~/github/ae/cli/src/commands/<name>.ts` |
-| CLI entry + command registration | `~/github/ae/cli/src/index.ts` |
+| Skills (`/demo`, `/ready`, etc.) | `~/github/ara.engineer/cli/skills/<name>/SKILL.md` |
+| CLI commands (`ae url`, `ae pr`, etc.) | `~/github/ara.engineer/cli/src/commands/<name>.ts` |
+| CLI entry + command registration | `~/github/ara.engineer/cli/src/index.ts` |
 
 ## Step 1: Analyze the conversation
 
@@ -39,7 +39,7 @@ Present these to the user. Get confirmation before making changes.
 ## Step 2: Map to skills
 
 ```bash
-ls ~/github/ae/cli/skills/*/SKILL.md | sed 's|.*/skills/||;s|/SKILL.md||' | sort
+ls ~/github/ara.engineer/cli/skills/*/SKILL.md | sed 's|.*/skills/||;s|/SKILL.md||' | sort
 ```
 
 For each learning, identify which skill to patch and what type of fix:
@@ -59,15 +59,15 @@ For each learning, identify which skill to patch and what type of fix:
 For each approved change:
 
 **Skills:**
-1. Read `~/github/ae/cli/skills/<name>/SKILL.md`
+1. Read `~/github/ara.engineer/cli/skills/<name>/SKILL.md`
 2. Make the minimal edit — patch surgically, don't rewrite
 3. Bump patch version in frontmatter (`1.0.0` → `1.0.1`)
-4. For new skills: create `~/github/ae/cli/skills/<name>/SKILL.md`
+4. For new skills: create `~/github/ara.engineer/cli/skills/<name>/SKILL.md`
 
 **CLI commands (new or modified):**
-1. Edit/create `~/github/ae/cli/src/commands/<name>.ts`
-2. If new: register in `~/github/ae/cli/src/index.ts` (import + add to `coreCommands`)
-3. Never touch `~/.ae/cli/` — that is a generated install, not source
+1. Edit/create `~/github/ara.engineer/cli/src/commands/<name>.ts`
+2. If new: register in `~/github/ara.engineer/cli/src/index.ts` (import + add to `coreCommands`)
+3. Never touch `~/.aracli/cli/` — that is a generated install, not source
 
 **Rules:**
 - Minimal diffs — only what the learning requires

@@ -1,4 +1,4 @@
-// ae poll — watch Linear for In Progress issues assigned to Adi, spawn ae wt,
+// aracli poll — watch Linear for In Progress issues assigned to Adi, spawn aracli wt,
 // then track PR lifecycle: open → In Review, merged → Done.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -13,7 +13,7 @@ const STATE_DONE = "2d48ea35-d79a-47fb-a3f1-c94fb29e2592";
 const STATE_FILE = resolve(homedir(), ".ae-poll-state.json");
 const PLIST_PATH = resolve(homedir(), "Library/LaunchAgents/so.ara.ae-poll.plist"); // kept for --uninstall cleanup
 
-// Presume the user runs `ae poll` from their Ara checkout. Fall back to a
+// Presume the user runs `aracli poll` from their Ara checkout. Fall back to a
 // per-user hardcoded path only if cwd isn't a git repo.
 function findAraRepo(): string {
   const cwd = process.cwd();
@@ -177,11 +177,11 @@ const TRIGGER_DIR = resolve(homedir(), ".ae-poll-triggers");
 
 function spawnWt(title: string): void {
   // Write a trigger file — the watcher loop running inside the cmux spawn shell
-  // picks it up and runs ae wt from within cmux (full socket access).
+  // picks it up and runs aracli wt from within cmux (full socket access).
   mkdirSync(TRIGGER_DIR, { recursive: true });
   const safe = title.replace(/'/g, "'\\''");
   const id = Date.now();
-  writeFileSync(resolve(TRIGGER_DIR, `${id}.sh`), `ae wt '${safe}'\n`, { mode: 0o755 });
+  writeFileSync(resolve(TRIGGER_DIR, `${id}.sh`), `aracli wt '${safe}'\n`, { mode: 0o755 });
   console.log(`[poll] ✓ trigger written for: ${title}`);
 }
 
@@ -193,7 +193,7 @@ async function pollOnce(apiKey: string, userId: string): Promise<void> {
   const activeIssues = await getInProgressIssues(apiKey, userId);
   const activeIds = new Set(activeIssues.map(i => i.id));
 
-  // Spawn ae wt for any newly In Progress issues
+  // Spawn aracli wt for any newly In Progress issues
   for (const issue of activeIssues) {
     if (!state.tracked[issue.id]) {
       console.log(`[poll] ▶ ${issue.identifier}: ${issue.title}`);
@@ -280,10 +280,10 @@ async function showPollDashboard(): Promise<void> {
     const entries = Object.values(state.tracked);
     const dot = DOTS[tick % DOTS.length];
     const lines: string[] = [""];
-    lines.push(`  \x1b[1mae poll\x1b[0m — Linear → cmux  \x1b[2m(Ctrl-C to exit, daemon keeps running)\x1b[0m`);
+    lines.push(`  \x1b[1maracli poll\x1b[0m — Linear → cmux  \x1b[2m(Ctrl-C to exit, daemon keeps running)\x1b[0m`);
     lines.push("  " + "─".repeat(72));
     if (entries.length === 0) {
-      lines.push("  \x1b[2mNo tracked issues — move a Linear issue to In Progress to spawn ae wt\x1b[0m");
+      lines.push("  \x1b[2mNo tracked issues — move a Linear issue to In Progress to spawn aracli wt\x1b[0m");
     } else {
       lines.push(`  \x1b[2m${"ISSUE".padEnd(10)} ${"TITLE".padEnd(38)} STATUS\x1b[0m`);
       for (const t of entries) {
@@ -308,16 +308,16 @@ async function showPollDashboard(): Promise<void> {
 
 export async function pollCommand(argv: string[]): Promise<number> {
   if (argv.includes("-h") || argv.includes("--help")) {
-    console.log(`ae poll — Linear → ae wt → PR lifecycle automation
+    console.log(`aracli poll — Linear → aracli wt → PR lifecycle automation
 
 Usage:
-  ae poll setup          save your personal Linear API key (~/.ae-linear-key)
-  ae poll                start the daemon (run from a cmux terminal, then leave)
-  ae poll status         show currently tracked issues
-  ae poll kill           kill the running daemon
+  aracli poll setup          save your personal Linear API key (~/.ae-linear-key)
+  aracli poll                start the daemon (run from a cmux terminal, then leave)
+  aracli poll status         show currently tracked issues
+  aracli poll kill           kill the running daemon
 
 Flow:
-  In Progress  →  ae wt <title>  (creates full cmux workspace)
+  In Progress  →  aracli wt <title>  (creates full cmux workspace)
   PR opened    →  Linear: In Review
   PR merged    →  Linear: Done
 
@@ -355,7 +355,7 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
     Bun.spawnSync(["pkill", "-9", "caffeinate"], { stdout: "pipe", stderr: "pipe" });
     Bun.spawnSync(["launchctl", "unload", PLIST_PATH], { stdout: "pipe", stderr: "pipe" });
     if (existsSync(PLIST_PATH)) Bun.spawnSync(["rm", PLIST_PATH]);
-    console.log("ae poll stopped.");
+    console.log("aracli poll stopped.");
     return 0;
   }
 
@@ -363,16 +363,16 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
   const SUBCOMMANDS = new Set(["status", "kill", "setup", "watch", "--stop", "--uninstall", "--status", "--watch", "--loop"]);
   if (argv.length === 0 || !SUBCOMMANDS.has(argv[0])) {
     if (!process.env.CMUX_WORKSPACE_ID) {
-      console.error("ae poll must be run from inside a cmux terminal.");
+      console.error("aracli poll must be run from inside a cmux terminal.");
       return 1;
     }
     let apiKey = getLocalApiKey();
     if (!apiKey) {
-      console.log("No personal key found — fetching from Railway (run `ae poll setup` to set your own)...");
+      console.log("No personal key found — fetching from Railway (run `aracli poll setup` to set your own)...");
       apiKey = await getApiKeyFromRailway();
     }
     if (!apiKey) {
-      console.error("No LINEAR_API_KEY found. Run `ae poll setup` to save your personal key.");
+      console.error("No LINEAR_API_KEY found. Run `aracli poll setup` to save your personal key.");
       return 1;
     }
     // Clear stale in-progress entries so fresh start doesn't retry old spawns
@@ -397,7 +397,7 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
       // Start a watcher in bash (not zsh — zsh nullglob errors stop the loop).
       // Shows a live feed of spawned issues so the terminal is a useful monitor.
       mkdirSync(TRIGGER_DIR, { recursive: true });
-      const watcherCmd = `bash -c 'echo "ae poll watcher ready"; while :; do for f in ${TRIGGER_DIR}/*.sh; do [ -f "$f" ] || continue; title=$(head -1 "$f" | sed "s/ae wt //;s/'"'"'//g"); echo "▶ spawning: $title"; bash "$f" && rm -f "$f" && echo "✓ workspace created: $title"; done; sleep 1; done'\n`;
+      const watcherCmd = `bash -c 'echo "aracli poll watcher ready"; while :; do for f in ${TRIGGER_DIR}/*.sh; do [ -f "$f" ] || continue; title=$(head -1 "$f" | sed "s/aracli wt //;s/'"'"'//g"); echo "▶ spawning: $title"; bash "$f" && rm -f "$f" && echo "✓ workspace created: $title"; done; sleep 1; done'\n`;
       Bun.spawnSync([CMUX_BIN, "send", "--workspace", ws, "--surface", spawnSurface, watcherCmd]);
       saveCmuxSession(ws, spawnSurface);
     } else {
@@ -412,14 +412,14 @@ Logs: ~/.ae-poll.log   State: ~/.ae-poll-state.json
   }
 
   if (argv[0] === "watch" || argv.includes("--watch")) {
-    // Display-only — ae start uses this so no duplicate daemon/watcher setup
+    // Display-only — aracli start uses this so no duplicate daemon/watcher setup
     await showPollDashboard();
     return 0;
   }
 
   const apiKey = getLocalApiKey();
   if (!apiKey) {
-    console.error("LINEAR_API_KEY not set. Run `ae poll setup` to save your personal Linear API key.");
+    console.error("LINEAR_API_KEY not set. Run `aracli poll setup` to save your personal Linear API key.");
     return 1;
   }
 

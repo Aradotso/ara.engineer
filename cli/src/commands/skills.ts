@@ -1,10 +1,10 @@
-// `ae skills` — explicit management of the ~/.claude/skills/ symlinks we own.
+// `aracli skills` — explicit management of the ~/.claude/skills/ symlinks we own.
 //
 // Subcommands:
-//   ae skills sync      link every repo skill into ~/.claude/skills (idempotent)
-//   ae skills status    show what's linked, preserved, or missing
+//   aracli skills sync      link every repo skill into ~/.claude/skills (idempotent)
+//   aracli skills status    show what's linked, preserved, or missing
 //
-// `ae update` runs `sync` automatically at the end, so most users never need
+// `aracli update` runs `sync` automatically at the end, so most users never need
 // to touch this directly.
 
 import { readdirSync, existsSync, lstatSync, readlinkSync, realpathSync } from "node:fs";
@@ -26,7 +26,7 @@ function runStatus(): number {
   const src = sourceSkillsDir();
   const dst = targetSkillsDir();
   if (!existsSync(src)) {
-    console.error(`ae skills: no skills dir at ${src}`);
+    console.error(`aracli skills: no skills dir at ${src}`);
     return 1;
   }
 
@@ -46,7 +46,7 @@ function runStatus(): number {
     let st: { isSymbolicLink: () => boolean } | null = null;
     try { st = lstatSync(to); } catch {}
     if (!st) {
-      rows.push({ name, status: "missing", detail: "(not linked — run `ae skills sync`)" });
+      rows.push({ name, status: "missing", detail: "(not linked — run `aracli skills sync`)" });
       continue;
     }
     if (!st.isSymbolicLink()) {
@@ -79,13 +79,13 @@ function runStatus(): number {
 }
 
 function printHelp() {
-  console.log(`ae skills — manage ~/.claude/skills symlinks into this ae repo
+  console.log(`aracli skills — manage ~/.claude/skills symlinks into this ae repo
 
 Usage:
-  ae skills sync     link every repo skill into ~/.claude/skills (idempotent)
-  ae skills status   show per-skill status (linked / preserved / missing / broken)
+  aracli skills sync     link every repo skill into ~/.claude/skills (idempotent)
+  aracli skills status   show per-skill status (linked / preserved / missing / broken)
 
-\`ae update\` runs \`sync\` automatically.
+\`aracli update\` runs \`sync\` automatically.
 `);
 }
 
@@ -98,7 +98,7 @@ export async function skillsCommand(argv: string[]): Promise<number> {
   }
   if (sub === "sync") return runSync();
   if (sub === "status" || sub === "list") return runStatus();
-  console.error(`ae skills: unknown subcommand '${sub}'`);
+  console.error(`aracli skills: unknown subcommand '${sub}'`);
   printHelp();
   return 2;
 }

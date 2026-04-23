@@ -1,10 +1,10 @@
-// ae pr — create a PR then wait for review bot comments and auto-fix.
+// aracli pr — create a PR then wait for review bot comments and auto-fix.
 //
 // Usage:
-//   ae pr [gh pr create flags...]   create PR + watch for bot reviews
-//   ae pr --watch <number>          watch an existing PR for reviews
+//   aracli pr [gh pr create flags...]   create PR + watch for bot reviews
+//   aracli pr --watch <number>          watch an existing PR for reviews
 //
-// Once review comments arrive, prints them and spawns `ae prr` to auto-fix.
+// Once review comments arrive, prints them and spawns `aracli prr` to auto-fix.
 
 import { $ } from "bun";
 $.throws(false);
@@ -115,7 +115,7 @@ async function watchForReviews(prNumber: number, nwo: string): Promise<void> {
       }
 
       if (hasActionableComments(newComments, newReviews)) {
-        console.log("\nRunning ae prr to auto-fix review comments…\n");
+        console.log("\nRunning aracli prr to auto-fix review comments…\n");
         const proc = Bun.spawn(["ae", "prr"], { stdio: ["inherit", "inherit", "inherit"] });
         await proc.exited;
         return;
@@ -126,19 +126,19 @@ async function watchForReviews(prNumber: number, nwo: string): Promise<void> {
     await Bun.sleep(POLL_INTERVAL_MS);
   }
 
-  console.log("\nTimed out waiting for reviews. Run `ae prr` manually when ready.");
+  console.log("\nTimed out waiting for reviews. Run `aracli prr` manually when ready.");
 }
 
 export async function prCommand(argv: string[]): Promise<number> {
   if (argv.includes("-h") || argv.includes("--help")) {
-    console.log(`ae pr — create a GitHub PR and auto-fix bot/agent review comments
+    console.log(`aracli pr — create a GitHub PR and auto-fix bot/agent review comments
 
 Usage:
-  ae pr [gh pr create flags...]   create PR then watch for reviews
-  ae pr --watch [<number>]        watch existing PR (no creation)
+  aracli pr [gh pr create flags...]   create PR then watch for reviews
+  aracli pr --watch [<number>]        watch existing PR (no creation)
 
 After a PR is created (or found), polls for review comments every 15s.
-When comments arrive, automatically runs \`ae prr\` to fix them.
+When comments arrive, automatically runs \`aracli prr\` to fix them.
 `);
     return 0;
   }
@@ -155,7 +155,7 @@ When comments arrive, automatically runs \`ae prr\` to fix them.
       prNumber = await currentPrNumber();
     }
     if (!prNumber) {
-      console.error("ae pr --watch: could not determine PR number. Pass it explicitly: ae pr --watch <number>");
+      console.error("aracli pr --watch: could not determine PR number. Pass it explicitly: aracli pr --watch <number>");
       return 1;
     }
   } else {
@@ -168,7 +168,7 @@ When comments arrive, automatically runs \`ae prr\` to fix them.
 
     prNumber = await currentPrNumber();
     if (!prNumber) {
-      console.error("ae pr: could not determine PR number after creation.");
+      console.error("aracli pr: could not determine PR number after creation.");
       return 1;
     }
     console.log(`\nPR #${prNumber} created.`);

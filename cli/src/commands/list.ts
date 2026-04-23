@@ -15,10 +15,10 @@ function parseArgs(argv: string[]): Args {
 export function listCommand(argv: string[]): number {
   const args = parseArgs(argv);
   if (args.help) {
-    console.log(`ae list — list all available skills
+    console.log(`aracli list — list all available skills
 
 Usage:
-  ae list [--json] [--verbose]
+  aracli list [--json] [--verbose]
 
 Flags:
   --json       machine-readable output for agents
@@ -42,7 +42,7 @@ ${candidateRoots().map((r) => `  ${r}`).join("\n")}
   }
 
   const pad = Math.max(...skills.map((s) => s.id.length), 4);
-  console.log(`ae skills (${skills.length})`);
+  console.log(`aracli skills (${skills.length})`);
   console.log("");
   if (args.verbose) {
     console.log(`  ${"ID".padEnd(pad)}   DESCRIPTION                                                      SOURCE`);
@@ -58,7 +58,7 @@ ${candidateRoots().map((r) => `  ${r}`).join("\n")}
     }
   }
   console.log("");
-  console.log(`Invoke any skill with:  ae <id>`);
-  console.log(`JSON for agents:        ae list --json`);
+  console.log(`Invoke any skill with:  aracli <id>`);
+  console.log(`JSON for agents:        aracli list --json`);
   return 0;
 }

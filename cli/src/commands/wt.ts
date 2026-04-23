@@ -1,4 +1,4 @@
-// ae wt — Ara worktree + 3-service boot with agent-numbered auto-login + ngrok.
+// aracli wt — Ara worktree + 3-service boot with agent-numbered auto-login + ngrok.
 //
 // Per-worktree:
 //   N          = next agent number (monotonic counter at .worktrees/.agent-counter)
@@ -66,10 +66,10 @@ function parseArgs(argv: string[]): Args {
 }
 
 function printHelp() {
-  console.log(`ae wt — create an isolated Ara worktree + dev env
+  console.log(`aracli wt — create an isolated Ara worktree + dev env
 
 Usage:
-  ae wt [name] [--no-claude]
+  aracli wt [name] [--no-claude]
 
 Options:
   name           worktree name (default: wt-<epoch>)
@@ -616,7 +616,7 @@ export async function wtCommand(argv: string[]): Promise<number> {
         // orientation message and a separate \n so Enter actually submits.
         const taskLine = args.task ? `\n\nYour task: ${args.task}` : "";
         const endToEnd = args.task
-          ? `\n\nAfter completing the task: (1) run /demo to record and post an animated demo to the PR, then (2) run \`ae pr\` in bash to create the PR (it will auto-watch for review comments and fix them). Complete all three steps end-to-end without stopping.`
+          ? `\n\nAfter completing the task: (1) run /demo to record and post an animated demo to the PR, then (2) run \`aracli pr\` in bash to create the PR (it will auto-watch for review comments and fix them). Complete all three steps end-to-end without stopping.`
           : "";
         await Bun.sleep(8000);
         await cmuxCall(["send", "--workspace", WS, "--surface", leftSurface, `Read CLAUDE.md — it has your full environment context (ports, ngrok URLs, browser surface, axiom queries scoped to your test user). Tell me what branch we're on and what's already committed.${taskLine}${endToEnd}`]);

@@ -1,4 +1,4 @@
-// `ae tick` — fast, silent poke that keeps a user's global skills current.
+// `aracli tick` — fast, silent poke that keeps a user's global skills current.
 //
 // Called from Claude Code hooks (PreToolUse/Skill, SessionStart) so every
 // slash-command invocation and every new session refreshes against the
@@ -64,7 +64,7 @@ function kickBackgroundFetch(repo: string): void {
 function kickBackgroundPull(repo: string): void {
   if (ageSec(LAST_TICK_PULL) < PULL_THROTTLE_SEC) return;
   touch(LAST_TICK_PULL);
-  // Detached `ae update` — re-uses the full pull+install+relink+skills-sync
+  // Detached `aracli update` — re-uses the full pull+install+relink+skills-sync
   // pipeline. Output silenced; orphaned process unref'd.
   try {
     const script = `cd "${repo}/cli" && bun run src/index.ts update >/dev/null 2>&1 || true`;

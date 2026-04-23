@@ -40,14 +40,14 @@ type NativeCommand = {
 };
 
 // Build a native command for each shim — users can invoke them as either
-// `ae cc` or the bare `cc` shim on PATH. Both paths exec the same target.
+// `aracli cc` or the bare `cc` shim on PATH. Both paths exec the same target.
 const shimCommands: NativeCommand[] = SHIMS.map((s) => ({
   name: s.name,
   summary: `→ ${s.underlying}`,
   run: async (argv: string[]) => {
     const p = shimPath(s.name);
     if (!p) {
-      console.error(`ae ${s.name}: shim missing at cli/shims/${s.name}`);
+      console.error(`aracli ${s.name}: shim missing at cli/shims/${s.name}`);
       return 1;
     }
     const proc = Bun.spawn(["bash", p, ...argv], { stdio: ["inherit", "inherit", "inherit"] });
@@ -58,7 +58,7 @@ const shimCommands: NativeCommand[] = SHIMS.map((s) => ({
 const coreCommands: NativeCommand[] = [
   {
     name: "start",
-    summary: "Open ae dashboard: ae status (left 60%) + ae poll + watcher (right)",
+    summary: "Open ae dashboard: aracli status (left 60%) + aracli poll + watcher (right)",
     run: startCommand,
   },
   {
@@ -78,7 +78,7 @@ const coreCommands: NativeCommand[] = [
   },
   {
     name: "poll",
-    summary: "Watch Linear: spawn ae wt for In Progress issues, track PR → In Review → Done",
+    summary: "Watch Linear: spawn aracli wt for In Progress issues, track PR → In Review → Done",
     run: pollCommand,
   },
   {
@@ -98,12 +98,12 @@ const coreCommands: NativeCommand[] = [
   },
   {
     name: "show",
-    summary: "Print a skill's SKILL.md by id (same as `ae <id>`)",
+    summary: "Print a skill's SKILL.md by id (same as `aracli <id>`)",
     run: (argv: string[]) => {
       const id = argv[0];
       if (!id) {
-        console.error("ae show: missing skill id");
-        console.error("Usage: ae show <id> [--json]");
+        console.error("aracli show: missing skill id");
+        console.error("Usage: aracli show <id> [--json]");
         return 2;
       }
       return showCommand(id, { json: argv.includes("--json") });
@@ -149,12 +149,13 @@ function printHelp() {
     console.log("");
   }
 
-  console.log(`ae ${VERSION} — Ara engineer CLI`);
+  console.log(`aracli ${VERSION} — Ara engineer CLI`);
   console.log("");
   console.log("Usage:");
-  console.log("  ae <command> [args...]          run a native command (below)");
-  console.log("  ae <skill> [--json]             print a skill's SKILL.md");
-  console.log("  ae list [--json]                list every discoverable skill");
+  console.log("  aracli <command> [args...]      run a native command (below)");
+  console.log("  aracli <skill> [--json]         print a skill's SKILL.md");
+  console.log("  aracli list [--json]            list every discoverable skill");
+  console.log("  (the legacy `ae` command still works as an alias)");
   console.log("");
   console.log("Core commands:");
   for (const c of coreCommands) {
@@ -174,10 +175,10 @@ function printHelp() {
   }
   console.log("");
   console.log("Agent-friendly:");
-  console.log("  ae list --json                  machine-readable skill catalog");
-  console.log("  ae <skill> --json               skill metadata + full body");
+  console.log("  aracli list --json                  machine-readable skill catalog");
+  console.log("  aracli <skill> --json               skill metadata + full body");
   console.log("");
-  console.log("Flow:  ae wt <name>  →  ae feat  →  ae test  →  ae push");
+  console.log("Flow:  aracli wt <name>  →  ae feat  →  ae test  →  ae push");
   console.log("Docs:  https://ara.engineer");
 }
 
@@ -187,7 +188,7 @@ async function main() {
   // First-run bootstrap: silently link this repo's skills into
   // ~/.claude/skills the very first time `ae` runs on this machine (and
   // at most once per day after). Makes `ae` work out of the box without
-  // `ae update` / `ae skills sync`.
+  // `aracli update` / `aracli skills sync`.
   maybeBootstrapSkills();
 
   // Auto-update on every invocation if the cached behind-count > 0.

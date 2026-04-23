@@ -1,8 +1,8 @@
-// ae url — print ngrok URLs for the current worktree as clickable hyperlinks.
+// aracli url — print ngrok URLs for the current worktree as clickable hyperlinks.
 //
 // Usage:
-//   ae url          show all tunnel URLs for current worktree
-//   ae url app      filter by name (app / mkt / api)
+//   aracli url          show all tunnel URLs for current worktree
+//   aracli url app      filter by name (app / mkt / api)
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -55,13 +55,13 @@ export async function urlCommand(argv: string[]): Promise<number> {
 
   const ngrokPath = await findNgrokYml();
   if (!ngrokPath) {
-    console.error("ae url: no .ngrok.yml found in current worktree or repo root");
+    console.error("aracli url: no .ngrok.yml found in current worktree or repo root");
     return 1;
   }
 
   const tunnels = parseNgrokYml(ngrokPath);
   if (!tunnels.length) {
-    console.error("ae url: no tunnels found in", ngrokPath);
+    console.error("aracli url: no tunnels found in", ngrokPath);
     return 1;
   }
 
@@ -70,7 +70,7 @@ export async function urlCommand(argv: string[]): Promise<number> {
     : tunnels;
 
   if (!filtered.length) {
-    console.error(`ae url: no tunnel matching "${filter}"`);
+    console.error(`aracli url: no tunnel matching "${filter}"`);
     return 1;
   }
 
