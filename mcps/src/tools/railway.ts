@@ -42,18 +42,27 @@ export function registerRailwayTools(server: McpServer) {
 
   // ─── Account ───────────────────────────────────────────────────────────────
 
-  server.tool("railway_whoami", "Get info about the Railway credential this MCP is using. Works with both personal-account tokens (returns the user) and project tokens (returns the project + workspace).", {}, async () => {
-    // Personal tokens can call `me`; project tokens can't. Try `me` first,
-    // fall back to the token's project context.
+  server.tool("railway_whoami", "Identify what Railway credential this MCP is using. Detects personal / team / project token types and returns the relevant context.", {}, async () => {
+    // Railway has three token kinds with different query access.
+    //   personal access token → `me { ... }`
+    //   project token         → `projectToken { project { ... } }`
+    //   team/workspace token  → neither, but `projects { ... }` works for listing
+    // Try them in order, return whatever sticks.
     try {
-      return ok(await railwayFetch(`query { me { id name email avatar registrationStatus } }`));
-    } catch (personalErr: any) {
-      try {
-        const data = await railwayFetch(`query { projectToken { project { id name team { name } } environment { id name } } }`);
-        return ok({ tokenType: "project", ...data });
-      } catch (projectErr: any) {
-        return err(projectErr);
-      }
+      return ok({ tokenType: "personal", ...(await railwayFetch(`query { me { id name email } }`)) });
+    } catch {}
+    try {
+      const data = await railwayFetch(`query { projectToken { projectId environmentId } }`);
+      return ok({ tokenType: "project", ...data });
+    } catch {}
+    // Team tokens: can list projects but not introspect self. Prove the token
+    // works by counting accessible projects.
+    try {
+      const data = await railwayFetch(`query { projects(first: 1) { edges { node { id name team { name } } } } }`);
+      const first = (data as any)?.projects?.edges?.[0]?.node;
+      return ok({ tokenType: "team-or-api", note: "token has no self-introspection query but can read projects", sampleProject: first });
+    } catch (e: any) {
+      return err(e);
     }
   });
 
