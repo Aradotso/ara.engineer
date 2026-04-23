@@ -1,0 +1,13 @@
+{
+  "name": "ara.engineer",
+  "version": "0.3.0",
+  "private": true,
+  "description": "The Ara engineer monorepo. cli/ ships the `ae` CLI. skills/ is the team's skill library (auto-distributed to ~/.claude/skills/). mcps/ is the MCP server deployed to Railway at connectors.ara.engineer. site/ is the landing page and /mcp catalog at https://ara.engineer.",
+  "workspaces": ["cli", "mcps", "site"],
+  "scripts": {
+    "dev:site": "bun --filter site dev",
+    "dev:mcps": "bun --filter mcps dev",
+    "dev:cli": "bun --filter ae dev",
+    "typecheck": "bun --filter '*' typecheck"
+  }
+}

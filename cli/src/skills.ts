@@ -36,7 +36,10 @@ export function candidateRoots(): string[] {
   if (fromEnv) {
     for (const p of fromEnv.split(":").filter(Boolean)) roots.push(p);
   }
-  roots.push(resolve(cliDir(), "skills")); // bundled skills (highest priority after env override)
+  // New monorepo layout: skills live at <repo>/skills (i.e. <cli>/../skills).
+  roots.push(resolve(cliDir(), "..", "skills"));
+  // Back-compat: older checkouts had skills under cli/skills.
+  roots.push(resolve(cliDir(), "skills"));
   roots.push(resolve(homedir(), ".claude/skills"));
   roots.push(resolve(homedir(), "lab/astack"));
   roots.push(resolve(homedir(), "lab/ae"));
