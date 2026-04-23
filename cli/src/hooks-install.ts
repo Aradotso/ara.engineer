@@ -156,14 +156,19 @@ function installCursorHooks(result: HookInstallResult): void {
     changed = true;
   }
 
-  // beforeSubmitPrompt: fires on every user message, so first invocation
-  // in a new session gets a fresh tick even if sessionStart hasn't yet
-  // completed pulling.
-  if (cursorHasCommand(raw.hooks.beforeSubmitPrompt, "aracli tick")) {
-    result.alreadyPresent.push("cursor:beforeSubmitPrompt:aracli-tick");
+  // beforeSubmitPrompt: fires on every user message. Use blocking `aracli
+  // update` (not `tick`) so the pull completes BEFORE the agent reads the
+  // skill files. `tick` is detached and races against the read. Update is
+  // a no-op (~100ms) when nothing's behind, so the overhead is negligible.
+  if (cursorHasCommand(raw.hooks.beforeSubmitPrompt, "aracli update")) {
+    result.alreadyPresent.push("cursor:beforeSubmitPrompt:aracli-update");
   } else {
-    raw.hooks.beforeSubmitPrompt = [...(raw.hooks.beforeSubmitPrompt ?? []), { command: BASH_TICK }];
-    result.installed.push("cursor:beforeSubmitPrompt:aracli-tick");
+    // Remove any prior tick-based entry we may have installed before this fix
+    raw.hooks.beforeSubmitPrompt = (raw.hooks.beforeSubmitPrompt ?? []).filter(
+      (e) => !(e.command ?? "").includes("aracli tick"),
+    );
+    raw.hooks.beforeSubmitPrompt = [...raw.hooks.beforeSubmitPrompt, { command: BASH_UPDATE }];
+    result.installed.push("cursor:beforeSubmitPrompt:aracli-update");
     changed = true;
   }
 

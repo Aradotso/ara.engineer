@@ -16,8 +16,6 @@ triggers:
 
 # aracli — the CLI and its skill pipeline
 
-> 🪝 **HOOK-TRIGGERED TEST — 2026-04-23T23:25Z** — added without manual aracli update.
-
 `aracli` is the Ara engineer CLI (`~/github/ara.engineer/cli/`). It used to
 be named `ae`, which still works as an alias pointing at the same binary.
 One of its jobs is to auto-distribute a shared pool of Claude Code skills
