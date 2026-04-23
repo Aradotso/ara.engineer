@@ -3,7 +3,9 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "bun run src/index.ts"
+# startCommand intentionally omitted — the Dockerfile CMD wraps bun with
+# `infisical run` to inject secrets from Ara-passwords /mcp. Overriding
+# it here would bypass Infisical and run bun without any secrets.
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
