@@ -37,25 +37,28 @@ and every teammate's next `ae mcp setup-*` picks it up, no CLI release needed.
 
 ## Secrets convention
 
-**All runtime secrets for Ara live in Railway variables.**
+**All runtime secrets live in Infisical. Railway runs services; Infisical holds keys.**
 
-- `ara-api` (on the `Ara Backend` project, `prd` environment) is the canonical
-  source — Stripe, OpenAI, Anthropic, Supabase, GitHub, Slack, Resend, Google,
-  Cloudflare, Axiom, Braintrust, etc. all live there.
-- The `ara.engineer` Railway project holds the MCP server's own keys
-  (Resend, Higgsfield, Braintrust, Axiom, etc.) for tools the MCP
-  proxies to.
-- Agents connected to the Ara MCP discover everything via `railway_get_variables`
-  — the `ARA_INSTRUCTIONS` sent on session init tell them to start with
-  `ara-api` and fall back to other services.
+- Project: `Ara-passwords` (id `6d518288-7854-49d2-aa42-8ffd285dafa1`)
+- Envs: `dev`, `staging`, `prod`
+- Folders: `/shared/`, `/ara-api/`, `/ara-web/`, `/text-ara-so/`, `/mcp/`, `/cli/`
+
+Services wrap their start command with `infisical run --projectId=... --env=prod
+--path=/<service> -- <cmd>`. Railway holds only the machine-identity bootstrap
+(`INFISICAL_CLIENT_ID` + `INFISICAL_CLIENT_SECRET`) plus platform-auto vars
+(`RAILWAY_*`, `PORT`).
+
+Agents discover secrets via `infisical_list_secrets` / `infisical_get_secret`
+tools on the Ara MCP — not `railway_get_variables` anymore.
 
 Rules:
-- **Never commit secrets to the repo.** `.env` / `.env.local` are gitignored.
-- **Never roll your own vault.** Railway is the store; 1Password is for humans.
-- **Rotation:** update in Railway, the service redeploys on next write.
+- Never commit secrets. Use `infisical secrets -o dotenv > .env.local` locally.
+- Never put new secrets in Railway env vars.
+- Never roll your own vault. Infisical = services, 1Password = humans.
 
-See `mcps/src/index.ts` (`ARA_INSTRUCTIONS`) for the canonical agent-facing
-description of where each category of secret lives.
+See [`site/public/secrets/`](./site/public/secrets/) (public page),
+[`skills/secrets/SKILL.md`](./skills/secrets/SKILL.md) (agent skill),
+and `mcps/src/index.ts` (`ARA_INSTRUCTIONS`) for the agent-facing rules.
 
 ## Repo structure
 

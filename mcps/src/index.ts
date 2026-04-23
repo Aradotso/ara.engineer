@@ -14,6 +14,7 @@ import { registerLinqTools } from "./tools/linq.js";
 import { registerPostizTools } from "./tools/postiz.js";
 import { registerBraintrustTools } from "./tools/braintrust.js";
 import { registerAxiomTools } from "./tools/axiom.js";
+import { registerInfisicalTools } from "./tools/infisical.js";
 import { registerPrompts } from "./prompts/index.js";
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -32,26 +33,35 @@ You have direct access to Ara's internal tools via MCP. For Railway and
 the other services below, just call these tools — don't shell out, don't
 curl APIs, don't ask the user for keys.
 
-## 🔑 ALL secrets & API keys for Ara live in Railway variables
+## 🔑 ALL secrets & API keys live in Infisical (project: Ara-passwords)
 
 API keys, DB URLs, OAuth secrets, third-party tokens (Stripe, OpenAI,
-Anthropic, Supabase, GitHub, Slack, Resend, Google, etc.) — all stored
-as Railway env vars on one of our services.
+Anthropic, Supabase, GitHub, Slack, Resend, Google, etc.) are in
+Infisical, organized by folder per service.
 
-**Start with \`ara-api\` — it has almost everything.**
+**Use the \`infisical_*\` tools, not \`railway_*\` for secrets.**
 
 Hardcoded IDs (skip the discovery roundtrips):
-- Project \`Ara Backend\`: \`5b03413d-9ace-4617-beb5-18b26ce5f339\`
-- Environment \`prd\`: \`f3d22dae-9e86-4a38-a26e-0d27efa12749\`
-- Service \`ara-api\`: \`304984ab-6cc0-42cf-80e4-9cc9b6529b21\`
+- Ara-passwords project ID: \`6d518288-7854-49d2-aa42-8ffd285dafa1\`
+- Environments: \`dev\`, \`staging\`, \`prod\`
 
-Typical lookup: call \`railway_get_variables\` with the three IDs above.
-If the key isn't there, check \`text-ara-so\` or the \`ara.engineer\`
-project (which hosts this MCP server itself) via \`railway_list_projects\`.
+Folder layout:
+- \`/shared/\` — used by multiple services (LLM keys, Supabase, Stripe, etc.)
+- \`/ara-api/\` — the main backend service (ara-api on Railway)
+- \`/ara-web/\` — frontend web app (VITE_* vars)
+- \`/text-ara-so/\` — text.ara.so SMS service (LINQ_*)
+- \`/mcp/\` — this MCP server's own keys
+- \`/cli/\` — the ae CLI
+
+Typical lookup: call \`infisical_list_secrets\` with env + path to see
+what's there, or \`infisical_get_secret\` for a specific key. Railway
+is still where services **run** and where Railway's own platform vars
+(RAILWAY_*, PORT) live — but it is NOT the source of truth for app
+secrets anymore. Do not add new secrets to Railway.
 
 Do NOT: ask the user to paste credentials, read \`.env\`/\`.env.local\`
 hoping they exist, generate fake values, or search the filesystem. If a
-value isn't in any Railway service, THEN ask the user.
+value isn't in Infisical, THEN ask the user.
 
 ## Tools available
 
@@ -69,6 +79,9 @@ value isn't in any Railway service, THEN ask the user.
 - **Braintrust** (\`braintrust_*\`) — eval experiments, trace logs, datasets, prompts.
 - **Axiom** (\`axiom_query\`, \`axiom_tail_logs\`, \`axiom_list_datasets\`) — Ara logs
   (\`logs\` dataset). Use \`axiom_tail_logs\` for ad-hoc debugging.
+- **Infisical** (\`infisical_list_secrets\`, \`infisical_get_secret\`,
+  \`infisical_set_secret\`, \`infisical_delete_secret\`, \`infisical_list_folders\`) —
+  canonical secret store for everything runtime.
 
 Call \`tools/list\` for full schemas.
 
@@ -148,6 +161,7 @@ function createMcpSession(): { server: McpServer; transport: StreamableHTTPServe
   registerPostizTools(server);
   registerBraintrustTools(server);
   registerAxiomTools(server);
+  registerInfisicalTools(server);
   registerPrompts(server);
 
   const transport = new StreamableHTTPServerTransport({
