@@ -1,8 +1,8 @@
 ---
 name: trace
-version: 2.0.0
+version: 2.1.0
 description: |
-  Ara agent-trace debugging — inspect Braintrust traces for the website-agent (TS/Bun, Cerebras, Vercel AI SDK v6). Invoked as `/trace recent`, `/trace turn <turn_id>`, `/trace convo <chat_id>`, `/trace user <phone>`, `/trace tool <name>`, `/trace span <id>`, `/trace <url>`, or `/trace test` (run canonical e2e via `website-agent/scripts/bt_e2e.ts`).
+  Ara agent-trace debugging — inspect Braintrust traces for the website-agent (TS/Bun, Cerebras, Vercel AI SDK v6). Invoked as `/trace recent`, `/trace turn <turn_id>`, `/trace convo <chat_id>`, `/trace user <phone>`, `/trace tool <name>`, `/trace span <id>`, `/trace <url>`, `/trace test` (run canonical e2e via `website-agent/scripts/bt_e2e.ts`), or `/trace score` (run the three trace-scope scorers across recent prod turns — hallucinations, tool budget, builder outcome).
 allowed-tools:
   - Bash
   - Read
@@ -234,6 +234,48 @@ logs --search "<chat_id>"` command to confirm the trace.
 
 ---
 
+## `/trace score` — run scorers on recent prod turns
+
+Three trace-scope scorers live in `text.ara.so/backend/evals/scorers/`. Each
+takes a `webhook.inbound` root span and returns `{score: 0..1, reason, metadata}`.
+
+| scorer | type | catches |
+|---|---|---|
+| `tool_budget_ok`     | code         | **speed-first**: end-to-end duration (55%) + minimal tool use (30%) + rounds/LLM/cost tiebreakers (15%). Soft-exponential decay past budget (2× ≈ 0.37). Budgets: 30s duration, 8 tool calls, 5 rounds. |
+| `builder_outcome_ok` | code         | hard gates: `outcome==ok`, zero tool errors, non-trivial reply, URL present |
+| `preview_content_ok` | LLM judge    | intent mismatch + **hallucinated actions** — agent claimed something tools never did (G-Eval rubric, Cerebras `zai-glm-4.7`, `reasoning_effort: low`) |
+
+**Local run — no upload, fast feedback loop:**
+
+```bash
+cd text.ara.so/backend
+bun run scripts/score-recent-traces.ts 30                 # 30 most recent turns
+LIMIT=50 WINDOW=24h bun run scripts/score-recent-traces.ts
+```
+
+Prints per-scorer histogram, mean/p50/std, and pearson correlation + precision/recall
+against a ground-truth `hadError` signal (`outcome != "ok" OR tool_errors > 0`).
+Then dumps the bottom-3 examples per scorer with the user text, agent reply, and
+the scorer's one-line rationale.
+
+**Ship as a Braintrust experiment (online scoring / regression comparison):**
+
+```bash
+cd text.ara.so/backend
+npx braintrust eval evals/trace-scorers.eval.ts --push
+```
+
+**What "valuable" looks like on healthy prod traffic:**
+- `builder_outcome_ok`: pearson ≈ 1.00, 100% precision/recall — tight watchdog for real crashes.
+- `tool_budget_ok`: pearson ≈ 0.88, ~50% precision — surfaces "slow and/or tool-thrashing" traces the hard-gate scorer misses. A 176s max-rounds run scores ~0.03; a 31s healthy build with 16 tool calls scores ~0.75.
+- `preview_content_ok`: low correlation with ground-truth *by design* — it catches silent hallucinations like `"Deploy it" → agent replies "now live! 🚀" with zero tools invoked`. Empty `tools: []` tags on a trace that claimed a deploy is the canonical catch.
+
+**Cost:** ~300 judge tokens per trace at `reasoning_effort: low`. 30 turns ≈ pennies.
+
+**Gotcha:** `zai-glm-4.7` is a reasoning model. Keep judge `maxOutputTokens ≥ 2000` and `providerOptions.cerebras.reasoning_effort: "low"`, or you'll see empty `text` with `finishReason: "length"` and 100% reasoning tokens.
+
+---
+
 ## `/trace health` — is instrumentation live?
 
 ```bash
@@ -278,5 +320,7 @@ User says "my deploy for fetch-dogs didn't work":
 | `bt view span --object-ref project_logs:<pid> --id <sid>` | Full untruncated span |
 | `bt sql "<query>"` | Ad-hoc SQL across spans |
 | `bt status --json` | Confirm active org/project |
+| `bun run scripts/score-recent-traces.ts N` | Run 3 scorers on last N `webhook.inbound` roots |
+| `npx braintrust eval evals/trace-scorers.eval.ts --push` | Ship scorers as a BT experiment |
 
 See `/braintrust` for general `bt` CLI reference.
