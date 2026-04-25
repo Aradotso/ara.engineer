@@ -69,7 +69,7 @@ value isn't in Infisical, THEN ask the user.
 - **Instacart** (\`search_products\`, \`search_stores\`, \`create_cart\`, \`check_order_status\`)
 - **Higgsfield** (\`generate_video\`, \`check_video_status\`, \`edit_video\`)
 - **Blaxel** (\`blaxel_*\`) — agent deployment.
-- **Engain** (\`engain_*\`) — leads / outbound.
+- **Engain** (\`engain_*\`) — Reddit organic marketing (opportunities, tasks, mentions, orders, balance).
 - **Linq** (\`linq_*\`) — messaging.
 - **Braintrust** (\`braintrust_*\`) — eval experiments, trace logs, datasets, prompts.
 - **Axiom** (\`axiom_query\`, \`axiom_tail_logs\`, \`axiom_list_datasets\`) — Ara logs
